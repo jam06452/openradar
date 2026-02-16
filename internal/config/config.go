@@ -1,9 +1,12 @@
 package config
 
 import (
+	"log"
 	"os"
 	"strconv"
 	"time"
+
+	"github.com/joho/godotenv"
 )
 
 type Config struct {
@@ -35,6 +38,11 @@ type Config struct {
 
 func Load() Config {
 	var cfg Config
+
+	err := godotenv.Load()
+	if err != nil {
+		log.Fatal(".env couldn't load!")
+	}
 
 	cfg.Env = getEnv("ENV", "development")
 
