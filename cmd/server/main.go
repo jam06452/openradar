@@ -14,8 +14,9 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	// config
+	// configss
 	cfg := config.Load()
+	print(cfg, ctx)
 
 	// db
 	// database, err := db.New(cfg.DatabaseURL)
