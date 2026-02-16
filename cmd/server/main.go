@@ -10,24 +10,29 @@ import (
 
 	"openradar/internal/config"
 	"openradar/internal/db"
+	"openradar/internal/queue"
+	"openradar/internal/scanner"
+	"openradar/internal/worker"
 )
 
 func main() {
-	// cancel call
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	// configss
 	cfg := config.Load()
 
-	// db
+	queue.NewInMemoryQueue(100)
+
+	scanner.ScanJob()
+	worker.Start()
+
 	database, err := db.New(cfg.Database.URL)
 	if err != nil {
-		log.Fatalf("database init failed : %v", err)
+		log.Fatalf("database init failed: %v", err)
 	}
-
-	fmt.Println(database)
+	fmt.Println(database) // Placeholder for now
 
 	<-ctx.Done()
-	fmt.Println("shutting down server")
+
+	log.Println("Shutting down server...")
 }
