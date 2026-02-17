@@ -100,7 +100,7 @@ func Start(conf config.Config, DBtoSaveIn *gorm.DB) {
 			log.Printf("Starting to process scan job %s for repository %s", job.ID, job.RepositoryURL)
 
 			job.Status = domain.JobStatusInProgress
-			var repo = scanner.ScanRepo(job.RepositoryURL)
+			var repo = scanner.ScanRepo(job.RepositoryURL, conf.GitHub.Key)
 
 			job.Status = domain.JobStatusCompleted
 			job.UpdatedAt = time.Now()

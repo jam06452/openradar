@@ -37,8 +37,19 @@ type ScannedRepository struct {
 }
 
 // This scans the live push endpoint.
-func ScanJob() []Event {
-	res, err := http.Get(GITHUB_ENDPOINT + "/events") // live events api
+func ScanJob(GITHUB_TOKEN string) []Event {
+	req, err := http.NewRequest("GET", GITHUB_ENDPOINT+"/events", nil) // live events api
+	if err != nil {
+		log.Fatalf("failed to create req: %s\n", err)
+	}
+
+	req.Header.Set("Authorization", "Bearer "+GITHUB_TOKEN)
+
+	client := &http.Client{
+		Timeout: 10 * time.Second,
+	}
+
+	res, err := client.Do(req)
 	if err != nil {
 		log.Fatalf("http call failed: %s\n", err) // replace with non fatal TODO
 	}
@@ -59,11 +70,24 @@ func ScanJob() []Event {
 }
 
 // Scans repository
-func ScanRepo(URL string) ScannedRepository {
-	res, err := http.Get(URL)
+func ScanRepo(URL string, GITHUB_TOKEN string) ScannedRepository {
+	req, err := http.NewRequest("GET", URL, nil) // live events api
 	if err != nil {
-		log.Fatalf("http call failed: %s\n", err)
+		log.Fatalf("failed to create req: %s\n", err)
 	}
+
+	req.Header.Set("Authorization", "Bearer "+GITHUB_TOKEN)
+
+	client := &http.Client{
+		Timeout: 10 * time.Second,
+	}
+
+	res, err := client.Do(req)
+	if err != nil {
+		log.Fatalf("http call failed: %s\n", err) // replace with non fatal TODO
+	}
+
+	defer res.Body.Close()
 
 	defer res.Body.Close()
 

@@ -22,11 +22,8 @@ type Config struct {
 		URL string
 	}
 
-	Redis struct {
-		URL string
-	}
-
 	GitHub struct {
+		Key string
 	}
 
 	Scanner struct {
@@ -51,11 +48,12 @@ func Load() Config {
 	cfg.HTTP.WriteTimeout = mustDuration(getEnv("HTTP_READ_TIMEOUT", "15s"))
 
 	cfg.Database.URL = required("DATABASE_URL")
-	cfg.Redis.URL = required("REDIS_URL")
 
 	cfg.Scanner.MaxRepoSizeMB = mustInt(getEnv("SCAN_MAX_REPO_MB", "50"))
 	cfg.Scanner.MaxFileSizeKB = mustInt(getEnv("SCAN_MAX_REPO_MB", "512"))
 	cfg.Scanner.MaxConcurrentClones = mustInt(getEnv("SCAN_MAX_CONCURRENT", "5"))
+
+	cfg.GitHub.Key = required("GITHUB_TOKEN")
 
 	validate(cfg)
 	return cfg

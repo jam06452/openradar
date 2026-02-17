@@ -28,19 +28,19 @@ func main() {
 		log.Fatalf("database init failed: %v", err)
 	}
 
-	for i := 0; i < 8; i++ { // 8 workers, TODO make config.
+	for i := 0; i < cfg.Scanner.MaxConcurrentClones; i++ {
 		worker.Start(cfg, database)
 	}
 
 	go func() {
-		ticker := time.NewTicker(15 * time.Second) // Scan every 15ish sec
+		ticker := time.NewTicker(35 * time.Second) // Scan every 35 sec
 		defer ticker.Stop()
 
 		for {
 			select {
 			case <-ticker.C:
 				log.Println("scanning for latest repo updates")
-				scanner.ScanJob()
+				scanner.ScanJob(cfg.GitHub.Key)
 			case <-ctx.Done():
 				return
 			}
