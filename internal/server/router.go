@@ -2,6 +2,8 @@ package server
 
 import (
 	"encoding/json"
+	"io/fs"
+	"log"
 	"net/http"
 	"strconv"
 
@@ -12,12 +14,20 @@ import (
 
 	"golang.org/x/time/rate"
 	"gorm.io/gorm"
+
+	"openradar/app"
 )
 
 func StartServer(db *gorm.DB) {
 	router := chi.NewRouter()
 
 	var limiter = rate.NewLimiter(10, 15) // 10 r/s, burst of 15
+
+	// Load frontend (app)
+	distFS, err := fs.Sub(app.Dist, "dist")
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	router.Use(middleware.Logger)
 
@@ -177,6 +187,11 @@ func StartServer(db *gorm.DB) {
 			return
 		}
 	})
+
+	fileServer := http.FileServer(http.FS(distFS))
+
+	// GET / ROOT
+	router.Handle("/*", fileServer)
 
 	http.ListenAndServe(":8080", router)
 }
