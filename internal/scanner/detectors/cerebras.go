@@ -5,7 +5,7 @@ import (
 	"regexp"
 )
 
-var cskRegex = regexp.MustCompile(`\b(csk-[A-Za-z0-9]{40,})\b`)
+var cskRegex = regexp.MustCompile(`csk-[A-Za-z0-9]{32,48}`)
 
 func Cerebras(src string) (string, bool) {
 	key := cskRegex.FindString(src)

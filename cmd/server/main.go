@@ -24,7 +24,7 @@ func main() {
 	queue.NewInMemoryQueue(100)
 
 	scanner.ScanJob()
-	worker.Start()
+	worker.Start(cfg)
 
 	database, err := db.New(cfg.Database.URL)
 	if err != nil {

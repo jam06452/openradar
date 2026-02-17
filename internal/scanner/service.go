@@ -31,8 +31,9 @@ type Payload struct {
 }
 
 type ScannedRepository struct {
-	Size uint   `json:"size"` // byte
-	Url  string `json:"url"`
+	Size      uint   `json:"size"` // byte
+	Url       string `json:"url"`
+	Clone_Url string `json:"clone_url"`
 }
 
 // This scans the live push endpoint.

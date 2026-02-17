@@ -5,7 +5,7 @@ import (
 	"regexp"
 )
 
-var misKeyRegex = regexp.MustCompile(`\bmis_[A-Za-z0-9]{40,}\b`)
+var misKeyRegex = regexp.MustCompile(`mis(?:tral)?_[A-Za-z0-9]{32,56}`)
 
 func Mistral(src string) (string, bool) {
 	key := misKeyRegex.FindString(src)
