@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"openradar/internal/config"
 	"openradar/internal/db"
@@ -27,15 +28,24 @@ func main() {
 		log.Fatalf("database init failed: %v", err)
 	}
 
-	scanner.ScanJob()
-	worker.Start(cfg, database)
-	worker.Start(cfg, database)
-	worker.Start(cfg, database)
-	worker.Start(cfg, database)
-	worker.Start(cfg, database)
-	worker.Start(cfg, database)
-	worker.Start(cfg, database)
-	worker.Start(cfg, database)
+	for i := 0; i < 8; i++ { // 8 workers, TODO make config.
+		worker.Start(cfg, database)
+	}
+
+	go func() {
+		ticker := time.NewTicker(15 * time.Second) // Scan every 15ish sec
+		defer ticker.Stop()
+
+		for {
+			select {
+			case <-ticker.C:
+				log.Println("scanning for latest repo updates")
+				scanner.ScanJob()
+			case <-ctx.Done():
+				return
+			}
+		}
+	}()
 
 	// When shutting down
 	<-ctx.Done()
