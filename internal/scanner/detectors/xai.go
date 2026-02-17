@@ -5,7 +5,7 @@ import (
 	"regexp"
 )
 
-var xaiKeyRegex = regexp.MustCompile(`xai-[A-Za-z0-9]{32,64}`)
+var xaiKeyRegex = regexp.MustCompile(`xai-[A-Za-z0-9]{32,128}`)
 
 func xAI(src string) (string, bool, string) {
 	key := xaiKeyRegex.FindString(src)
