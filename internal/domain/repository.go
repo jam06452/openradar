@@ -6,7 +6,7 @@ import (
 
 type Repository struct {
 	ScanJobID   string    `json:"scan_job_id"`
-	RepoName    string    `json:"repo_name"`
+	RepoName    string    `json:"repo_name" gorm:"primaryKey"`
 	LastUpdated time.Time `json:"last_updated"`
 }
 

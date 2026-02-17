@@ -1,7 +1,9 @@
 package scanner
 
 import (
+	"context"
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 	"openradar/internal/domain"
@@ -37,10 +39,10 @@ type ScannedRepository struct {
 }
 
 // This scans the live push endpoint.
-func ScanJob(GITHUB_TOKEN string) []Event {
-	req, err := http.NewRequest("GET", GITHUB_ENDPOINT+"/events", nil) // live events api
+func ScanJob(ctx context.Context, GITHUB_TOKEN string) ([]Event, error) {
+	req, err := http.NewRequestWithContext(ctx, "GET", GITHUB_ENDPOINT+"/events", nil) // live events api
 	if err != nil {
-		log.Fatalf("failed to create req: %s\n", err)
+		return nil, fmt.Errorf("failed to create req: %w", err)
 	}
 
 	req.Header.Set("Authorization", "Bearer "+GITHUB_TOKEN)
@@ -51,7 +53,7 @@ func ScanJob(GITHUB_TOKEN string) []Event {
 
 	res, err := client.Do(req)
 	if err != nil {
-		log.Fatalf("http call failed: %s\n", err) // replace with non fatal TODO
+		return nil, fmt.Errorf("http call failed: %w", err)
 	}
 
 	defer res.Body.Close()
@@ -66,14 +68,14 @@ func ScanJob(GITHUB_TOKEN string) []Event {
 		queue.Enqueue(sampleJob)
 	}
 
-	return events
+	return events, nil
 }
 
 // Scans repository
-func ScanRepo(URL string, GITHUB_TOKEN string) ScannedRepository {
-	req, err := http.NewRequest("GET", URL, nil) // live events api
+func ScanRepo(ctx context.Context, URL string, GITHUB_TOKEN string) (ScannedRepository, error) {
+	req, err := http.NewRequestWithContext(ctx, "GET", URL, nil) // live events api
 	if err != nil {
-		log.Fatalf("failed to create req: %s\n", err)
+		return ScannedRepository{}, fmt.Errorf("failed to create req: %w", err)
 	}
 
 	req.Header.Set("Authorization", "Bearer "+GITHUB_TOKEN)
@@ -84,10 +86,8 @@ func ScanRepo(URL string, GITHUB_TOKEN string) ScannedRepository {
 
 	res, err := client.Do(req)
 	if err != nil {
-		log.Fatalf("http call failed: %s\n", err) // replace with non fatal TODO
+		return ScannedRepository{}, fmt.Errorf("http call failed: %w", err)
 	}
-
-	defer res.Body.Close()
 
 	defer res.Body.Close()
 
@@ -96,5 +96,5 @@ func ScanRepo(URL string, GITHUB_TOKEN string) ScannedRepository {
 		log.Printf("json decode failed")
 	}
 
-	return repo
+	return repo, nil
 }

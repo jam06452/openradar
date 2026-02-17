@@ -29,7 +29,7 @@ func main() {
 	}
 
 	for i := 0; i < cfg.Scanner.MaxConcurrentClones; i++ {
-		worker.Start(cfg, database)
+		worker.Start(ctx, cfg, database)
 	}
 
 	go func() {
@@ -40,7 +40,9 @@ func main() {
 			select {
 			case <-ticker.C:
 				log.Println("scanning for latest repo updates")
-				scanner.ScanJob(cfg.GitHub.Key)
+				if _, err := scanner.ScanJob(ctx, cfg.GitHub.Key); err != nil {
+					log.Printf("failed to scan for jobs: %v", err)
+				}
 			case <-ctx.Done():
 				return
 			}

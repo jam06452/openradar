@@ -75,6 +75,19 @@ func GetRepositoryByName(id string, db *gorm.DB) (*domain.Repository, error) {
 	return &repo, nil
 }
 
+// Get Finding by Key
+func GetFindingByKey(key string, db *gorm.DB) (*domain.Finding, error) {
+	var find domain.Finding
+	result := db.First(&find, "key = ?", key)
+	if result.Error != nil {
+		if result.Error == gorm.ErrRecordNotFound {
+			return nil, fmt.Errorf("key not found")
+		}
+		return nil, fmt.Errorf("failed to fetch key: %w", result.Error)
+	}
+	return &find, nil
+}
+
 // Get Findings By Repository
 func GetFindingsByRepo(db *gorm.DB) error {
 	var findings []domain.Finding
