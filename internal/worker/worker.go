@@ -107,6 +107,11 @@ func Start(conf config.Config, DBtoSaveIn *gorm.DB) {
 
 			if repo.Size <= uint(conf.Scanner.MaxRepoSizeMB)*1000000 { // times 1000000x = mb
 				st := memory.NewStorage()
+				addedRepo := domain.NewRepository(
+					job.ID,
+					job.RepositoryURL,
+				)
+
 				r, err := git.Clone(st, nil, &git.CloneOptions{
 					URL:      repo.Clone_Url,
 					Progress: nil,
@@ -114,7 +119,21 @@ func Start(conf config.Config, DBtoSaveIn *gorm.DB) {
 				})
 
 				loopThroughFiles(r, job.ID, job.RepositoryURL, DBtoSaveIn)
-				print(err)
+				existingRepo, err := db.GetRepositoryByName(job.RepositoryURL, DBtoSaveIn)
+				_ = existingRepo
+
+				// Save/Update DB with repository
+				if err != nil {
+					// repo doesnt exist!
+					if err := db.AddRepository(addedRepo, DBtoSaveIn); err != nil {
+						log.Printf("Failed to save repository: %v", err)
+					}
+				} else {
+					// repo already exists!
+					if err := db.UpdateRepository(addedRepo, DBtoSaveIn); err != nil {
+						log.Printf("Failed to save repository: %v", err)
+					}
+				}
 				st = nil // garbage cleaner
 			}
 

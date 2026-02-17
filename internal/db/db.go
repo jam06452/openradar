@@ -62,6 +62,19 @@ func GetAllRepositories(db *gorm.DB) ([]domain.Repository, error) {
 	return repos, nil
 }
 
+// Get Repository by Name
+func GetRepositoryByName(id string, db *gorm.DB) (*domain.Repository, error) {
+	var repo domain.Repository
+	result := db.First(&repo, "repo_name = ?", id)
+	if result.Error != nil {
+		if result.Error == gorm.ErrRecordNotFound {
+			return nil, fmt.Errorf("repository not found")
+		}
+		return nil, fmt.Errorf("failed to fetch repository: %w", result.Error)
+	}
+	return &repo, nil
+}
+
 // Get Findings By Repository
 func GetFindingsByRepo(db *gorm.DB) error {
 	var findings []domain.Finding
@@ -81,7 +94,7 @@ func UpdateRepository(repo *domain.Repository, db *gorm.DB) error {
 	return nil
 }
 
-// Overwrite Repository
+// Remove Repository
 func DeleteRepository(scanJobID string, db *gorm.DB) error {
 	result := db.Where("scan_job_id = ?", scanJobID).Delete(&domain.Repository{})
 	if result.Error != nil {
