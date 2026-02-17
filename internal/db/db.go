@@ -7,6 +7,8 @@ import (
 
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
+
+	"openradar/internal/domain"
 )
 
 func New(url string) (*gorm.DB, error) {
@@ -30,4 +32,60 @@ func New(url string) (*gorm.DB, error) {
 	}
 
 	return db, nil
+}
+
+// New repository entry
+func AddRepository(repo *domain.Repository, db *gorm.DB) error {
+	result := db.Create(repo)
+	if result.Error != nil {
+		return fmt.Errorf("failed to create repository: %w", result.Error)
+	}
+	return nil
+}
+
+// New finding entry
+func AddFinding(finding *domain.Finding, db *gorm.DB) error {
+	result := db.Create(finding)
+	if result.Error != nil {
+		return fmt.Errorf("failed to create repository: %w", result.Error)
+	}
+	return nil
+}
+
+// Get All Repositories
+func GetAllRepositories(db *gorm.DB) ([]domain.Repository, error) {
+	var repos []domain.Repository
+	result := db.Find(repos)
+	if result.Error != nil {
+		return nil, fmt.Errorf("failed to fetch repositories: %w", result.Error)
+	}
+	return repos, nil
+}
+
+// Get Findings By Repository
+func GetFindingsByRepo(db *gorm.DB) error {
+	var findings []domain.Finding
+	result := db.Find(findings)
+	if result.Error != nil {
+		return fmt.Errorf("failed to fetch findings: %w", result.Error)
+	}
+	return nil
+}
+
+// Overwrite Repository
+func UpdateRepository(repo *domain.Repository, db *gorm.DB) error {
+	result := db.Save(repo)
+	if result.Error != nil {
+		return fmt.Errorf("failed to update repository: %w", result.Error)
+	}
+	return nil
+}
+
+// Overwrite Repository
+func DeleteRepository(scanJobID string, db *gorm.DB) error {
+	result := db.Where("scan_job_id = ?", scanJobID).Delete(&domain.Repository{})
+	if result.Error != nil {
+		return fmt.Errorf("failed to delete repository: %w", result.Error)
+	}
+	return nil
 }

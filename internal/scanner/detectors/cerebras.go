@@ -7,12 +7,12 @@ import (
 
 var cskRegex = regexp.MustCompile(`csk-[A-Za-z0-9]{32,48}`)
 
-func Cerebras(src string) (string, bool) {
+func Cerebras(src string) (string, bool, string) {
 	key := cskRegex.FindString(src)
 	if key == "" { // no match
-		return "", false
+		return "", false, "cerebras"
 	}
-	return key, true
+	return key, true, "cerebras"
 }
 
 func init() {

@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"log"
 	"os"
 	"os/signal"
@@ -23,15 +22,22 @@ func main() {
 
 	queue.NewInMemoryQueue(100)
 
-	scanner.ScanJob()
-	worker.Start(cfg)
-
 	database, err := db.New(cfg.Database.URL)
 	if err != nil {
 		log.Fatalf("database init failed: %v", err)
 	}
-	fmt.Println(database) // Placeholder for now
 
+	scanner.ScanJob()
+	worker.Start(cfg, database)
+	worker.Start(cfg, database)
+	worker.Start(cfg, database)
+	worker.Start(cfg, database)
+	worker.Start(cfg, database)
+	worker.Start(cfg, database)
+	worker.Start(cfg, database)
+	worker.Start(cfg, database)
+
+	// When shutting down
 	<-ctx.Done()
 
 	log.Println("Shutting down server...")

@@ -3,12 +3,12 @@ package worker
 import (
 	"io"
 	"log"
-	"os"
 	"path/filepath"
 	"strings"
 	"time"
 
 	"openradar/internal/config"
+	"openradar/internal/db"
 	"openradar/internal/domain"
 	"openradar/internal/queue"
 	"openradar/internal/scanner"
@@ -18,6 +18,8 @@ import (
 	"gopkg.in/src-d/go-git.v4"
 	"gopkg.in/src-d/go-git.v4/plumbing/object"
 	"gopkg.in/src-d/go-git.v4/storage/memory"
+
+	"gorm.io/gorm"
 )
 
 var allowExt = map[string]struct{}{
@@ -38,16 +40,24 @@ func hasTargetExt(name string) bool {
 	return ok
 }
 
-func runAllDetectors(src string, path *object.File) {
+func runAllDetectors(src string, path *object.File, scanJobID string, url string, DBtoSaveIn *gorm.DB) {
 	for _, scanFunction := range detectors.AllDetectors {
-		key, found := scanFunction(src)
+		key, found, provider := scanFunction(src)
 		if found {
 			log.Printf("Match found: %s\n", key)
+			finding := domain.NewFinding(
+				scanJobID,
+				url,
+				path.Name,
+				key,
+				provider,
+			)
+			db.AddFinding(finding, DBtoSaveIn)
 		}
 	}
 }
 
-func loopThroughFiles(repo *git.Repository) error {
+func loopThroughFiles(repo *git.Repository, scanJobID string, url string, DBtoSaveIn *gorm.DB) error {
 	ref, err := repo.Head()
 	if err != nil {
 		return err
@@ -76,13 +86,13 @@ func loopThroughFiles(repo *git.Repository) error {
 			return err
 		}
 
-		runAllDetectors(string(src), file)
+		runAllDetectors(string(src), file, scanJobID, url, DBtoSaveIn)
 		return nil
 	})
 	return err
 }
 
-func Start(conf config.Config) {
+func Start(conf config.Config, DBtoSaveIn *gorm.DB) {
 	go func() {
 		for {
 			job := queue.Dequeue()
@@ -101,12 +111,11 @@ func Start(conf config.Config) {
 			if repo.Size <= uint(conf.Scanner.MaxRepoSizeMB)*1000000 { // times 1000000x = mb
 				r, err := git.Clone(memory.NewStorage(), nil, &git.CloneOptions{
 					URL:      repo.Clone_Url,
-					Progress: os.Stdout,
+					Progress: nil,
+					Depth:    1,
 				})
 
-				loopThroughFiles(r)
-
-				print(r.Head())
+				loopThroughFiles(r, job.ID, job.RepositoryURL, DBtoSaveIn)
 				print(err)
 			}
 		}
