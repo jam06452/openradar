@@ -12,6 +12,7 @@ import (
 	"openradar/internal/db"
 	"openradar/internal/queue"
 	"openradar/internal/scanner"
+	"openradar/internal/server"
 	"openradar/internal/worker"
 )
 
@@ -47,6 +48,10 @@ func main() {
 				return
 			}
 		}
+	}()
+
+	go func() {
+		server.StartServer(database)
 	}()
 
 	// When shutting down
