@@ -105,8 +105,6 @@ func Start(conf config.Config, DBtoSaveIn *gorm.DB) {
 			job.Status = domain.JobStatusCompleted
 			job.UpdatedAt = time.Now()
 
-			log.Printf("Finished processing scan job %s", repo.Url)
-
 			// 25 Mb
 			if repo.Size <= uint(conf.Scanner.MaxRepoSizeMB)*1000000 { // times 1000000x = mb
 				r, err := git.Clone(memory.NewStorage(), nil, &git.CloneOptions{
@@ -118,7 +116,8 @@ func Start(conf config.Config, DBtoSaveIn *gorm.DB) {
 				loopThroughFiles(r, job.ID, job.RepositoryURL, DBtoSaveIn)
 				print(err)
 			}
+
+			log.Printf("Finished processing scan job %s", repo.Url)
 		}
 	}()
-	log.Println("Worker started and waiting for jobs :3")
 }
