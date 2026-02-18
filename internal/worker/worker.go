@@ -55,9 +55,9 @@ func runAllDetectors(src string, path *object.File, scanJobID string, url string
 				provider,
 			)
 			checkedFinding, err := db.GetFindingByKey(key, DBtoSaveIn)
-			_ = checkedFinding // golang xd
+			_ = checkedFinding
 
-			if err != nil { // make sure key doesnt already have a entry in the db
+			if err != nil {
 				db.AddFinding(finding, DBtoSaveIn)
 			}
 		}
@@ -123,13 +123,12 @@ func Start(ctx context.Context, conf config.Config, DBtoSaveIn *gorm.DB) {
 				job.Status = domain.JobStatusCompleted
 				job.UpdatedAt = time.Now()
 
-				if repo.Size <= uint(conf.Scanner.MaxRepoSizeMB)*1000000 { // times 1000000x = mb
+				if repo.Size <= uint(conf.Scanner.MaxRepoSizeMB)*1000000 {
 					dir, err := os.MkdirTemp("", "openradar-")
 					if err != nil {
 						log.Printf("failed to create temp dir: %v", err)
 						continue
 					}
-					defer os.RemoveAll(dir)
 
 					addedRepo := domain.NewRepository(
 						job.ID,
@@ -142,6 +141,7 @@ func Start(ctx context.Context, conf config.Config, DBtoSaveIn *gorm.DB) {
 						Depth:    1,
 					})
 					if err != nil {
+						os.RemoveAll(dir)
 						log.Printf("failed to clone repo %s: %v", job.RepositoryURL, err)
 						continue
 					}
@@ -150,17 +150,16 @@ func Start(ctx context.Context, conf config.Config, DBtoSaveIn *gorm.DB) {
 						log.Printf("error while looping through files: %v", err)
 					}
 
+					os.RemoveAll(dir)
+
 					existingRepo, err := db.GetRepositoryByName(job.RepositoryURL, DBtoSaveIn)
 					_ = existingRepo
 
-					// Save/Update DB with repository
 					if err != nil {
-						// repo doesnt exist!
 						if err := db.AddRepository(addedRepo, DBtoSaveIn); err != nil {
 							log.Printf("Failed to save repository: %v", err)
 						}
 					} else {
-						// repo already exists!
 						if err := db.UpdateRepository(addedRepo, DBtoSaveIn); err != nil {
 							log.Printf("Failed to save repository: %v", err)
 						}
