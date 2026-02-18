@@ -253,7 +253,10 @@ function setupTabFiltering() {
 
 function setupInfiniteScroll() {
     window.addEventListener('scroll', () => {
-        const isNearBottom = window.innerHeight + window.scrollY >= document.body.offsetHeight - 200;
+        const scrolledTo = window.innerHeight + window.scrollY;
+        const totalHeight = document.documentElement.scrollHeight;
+        const isNearBottom = scrolledTo >= totalHeight - 1200;
+        
         if (isNearBottom && !isLoading && currentPage < totalPages) {
             currentPage++;
             fetchLeaks(currentPage, currentFilter);
