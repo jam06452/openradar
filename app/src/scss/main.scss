@@ -119,7 +119,6 @@ body {
     max-width: 900px;
     display: flex;
     align-items: center;
-    justify-content: center;
     gap: 4px;
     padding: 4px;
     background-color: var(--bg-surface);
@@ -127,8 +126,13 @@ body {
     border-radius: var(--radius-md);
     overflow-x: auto;
     scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
 
     &::-webkit-scrollbar { display: none; }
+
+    @media (min-width: 700px) {
+        justify-content: center;
+    }
 }
 
 .tab {
@@ -141,6 +145,7 @@ body {
     padding: 6px 14px;
     border-radius: var(--radius-sm);
     white-space: nowrap;
+    flex-shrink: 0;
     transition: color 0.18s ease, background-color 0.18s ease;
 
     &:hover {
@@ -180,7 +185,7 @@ body {
     margin: 0 auto;
     padding: 24px;
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(420px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(min(420px, 100%), 1fr));
     row-gap: 8px;
     column-gap: 12px;
 }
