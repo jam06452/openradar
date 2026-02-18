@@ -89,13 +89,13 @@ func GetFindingByKey(key string, db *gorm.DB) (*domain.Finding, error) {
 }
 
 // Get Findings By Repository
-func GetFindingsByRepo(db *gorm.DB) error {
+func GetFindingsByRepo(db *gorm.DB, repoName string) ([]domain.Finding, error) {
 	var findings []domain.Finding
-	result := db.Find(findings)
+	result := db.Where("repo_name = ?", repoName).Find(&findings)
 	if result.Error != nil {
-		return fmt.Errorf("failed to fetch findings: %w", result.Error)
+		return nil, fmt.Errorf("failed to fetch findings: %w", result.Error)
 	}
-	return nil
+	return findings, nil
 }
 
 // Overwrite Repository

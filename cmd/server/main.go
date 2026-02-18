@@ -10,6 +10,7 @@ import (
 
 	"openradar/internal/config"
 	"openradar/internal/db"
+	"openradar/internal/jobs"
 	"openradar/internal/queue"
 	"openradar/internal/scanner"
 	"openradar/internal/server"
@@ -32,6 +33,8 @@ func main() {
 	for i := 0; i < cfg.Scanner.MaxConcurrentClones; i++ {
 		worker.Start(ctx, cfg, database)
 	}
+
+	go jobs.RunAllJobsEvery30Minutes(database)
 
 	go func() {
 		ticker := time.NewTicker(35 * time.Second) // Scan every 35 sec
