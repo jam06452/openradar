@@ -45,7 +45,7 @@ func hasTargetExt(name string) bool {
 func runAllDetectors(src string, path *object.File, scanJobID string, url string, DBtoSaveIn *gorm.DB) {
 	for _, scanFunction := range detectors.AllDetectors {
 		key, found, provider := scanFunction(src)
-		if found {
+		if found && detectors.EnsureKeyIsntSpam(key) {
 			log.Printf("Match found: %s\n", key)
 			finding := domain.NewFinding(
 				scanJobID,

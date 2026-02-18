@@ -50,7 +50,7 @@ func Load() Config {
 	cfg.Database.URL = required("DATABASE_URL")
 
 	cfg.Scanner.MaxRepoSizeMB = mustInt(getEnv("SCAN_MAX_REPO_MB", "50"))
-	cfg.Scanner.MaxFileSizeKB = mustInt(getEnv("SCAN_MAX_REPO_MB", "512"))
+	cfg.Scanner.MaxFileSizeKB = mustInt(getEnv("SCAN_MAX_FILE_KB", "2048"))
 	cfg.Scanner.MaxConcurrentClones = mustInt(getEnv("SCAN_MAX_CONCURRENT", "5"))
 
 	cfg.GitHub.Key = required("GITHUB_TOKEN")
