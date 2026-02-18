@@ -14,3 +14,7 @@ func Google(src string) (string, bool, string) {
 	}
 	return key, true, "google"
 }
+
+func init() {
+	AllDetectors = append(AllDetectors, Google)
+}

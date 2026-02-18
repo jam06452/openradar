@@ -1,6 +1,7 @@
 package worker
 
 import (
+	"bytes"
 	"context"
 	"io"
 	"log"
@@ -78,6 +79,11 @@ func loopThroughFiles(repo *git.Repository, scanJobID string, url string, DBtoSa
 	}
 
 	tree, err := commit.Tree()
+	if err != nil {
+		return err
+	}
+
+	var buf bytes.Buffer
 
 	tree.Files().ForEach(func(file *object.File) error {
 		if !hasTargetExt(file.Name) {
@@ -93,14 +99,15 @@ func loopThroughFiles(repo *git.Repository, scanJobID string, url string, DBtoSa
 		if err != nil {
 			return err
 		}
-		defer r.Close()
 
-		src, err := io.ReadAll(r)
+		buf.Reset()
+		_, err = io.Copy(&buf, r)
+		r.Close()
 		if err != nil {
 			return err
 		}
 
-		runAllDetectors(string(src), file, scanJobID, url, DBtoSaveIn)
+		runAllDetectors(buf.String(), file, scanJobID, url, DBtoSaveIn)
 		return nil
 	})
 	return err

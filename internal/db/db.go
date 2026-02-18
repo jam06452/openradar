@@ -23,8 +23,9 @@ func New(url string) (*gorm.DB, error) {
 		return nil, err
 	}
 
-	sqlDB.SetConnMaxIdleTime(10)
+	sqlDB.SetConnMaxIdleTime(5 * time.Minute)
 	sqlDB.SetMaxIdleConns(10)
+	sqlDB.SetMaxOpenConns(25)
 	sqlDB.SetConnMaxLifetime(time.Hour)
 
 	if err := db.AutoMigrate(&domain.Repository{}, &domain.Finding{}); err != nil {

@@ -6,6 +6,8 @@ import (
 	"log"
 	"net/http"
 	"strconv"
+	"sync"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
@@ -18,12 +20,80 @@ import (
 	"openradar/app"
 )
 
+type ipLimiter struct {
+	mu       sync.Mutex
+	limiters map[string]*visitorLimiter
+}
+
+type visitorLimiter struct {
+	limiter  *rate.Limiter
+	lastSeen time.Time
+}
+
+func newIPLimiter() *ipLimiter {
+	ipl := &ipLimiter{
+		limiters: make(map[string]*visitorLimiter),
+	}
+	go ipl.cleanup()
+	return ipl
+}
+
+func (ipl *ipLimiter) getLimiter(ip string) *rate.Limiter {
+	ipl.mu.Lock()
+	defer ipl.mu.Unlock()
+
+	v, exists := ipl.limiters[ip]
+	if !exists {
+		v = &visitorLimiter{
+			limiter: rate.NewLimiter(10, 15),
+		}
+		ipl.limiters[ip] = v
+	}
+	v.lastSeen = time.Now()
+	return v.limiter
+}
+
+func (ipl *ipLimiter) cleanup() {
+	for {
+		time.Sleep(3 * time.Minute)
+		ipl.mu.Lock()
+		for ip, v := range ipl.limiters {
+			if time.Since(v.lastSeen) > 5*time.Minute {
+				delete(ipl.limiters, ip)
+			}
+		}
+		ipl.mu.Unlock()
+	}
+}
+
+func corsMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Access-Control-Allow-Methods", "GET, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+
+		if r.Method == http.MethodOptions {
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
+
+		next.ServeHTTP(w, r)
+	})
+}
+
+func writeJSON(w http.ResponseWriter, status int, v any) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+	json.NewEncoder(w).Encode(v)
+}
+
 func StartServer(db *gorm.DB) {
 	router := chi.NewRouter()
 
-	var limiter = rate.NewLimiter(10, 15) // 10 r/s, burst of 15
+	ipl := newIPLimiter()
 	rateLimitMiddleware := func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			limiter := ipl.getLimiter(r.RemoteAddr)
 			if !limiter.Allow() {
 				http.Error(w, "Rate limit exceeded", http.StatusTooManyRequests)
 				return
@@ -33,9 +103,9 @@ func StartServer(db *gorm.DB) {
 	}
 
 	router.Use(middleware.Logger)
+	router.Use(corsMiddleware)
 	router.Use(rateLimitMiddleware)
 
-	// Load frontend (app)
 	publicFS, err := fs.Sub(app.Dist, "public")
 	if err != nil {
 		log.Fatal(err)
@@ -47,10 +117,9 @@ func StartServer(db *gorm.DB) {
 		log.Fatal(err)
 	}
 
-	// GET /findings?page=1&page_size=25&provider=google&min_age=24h
 	router.Get("/findings", func(w http.ResponseWriter, r *http.Request) {
 		pageStr := r.URL.Query().Get("page")
-		page := 1 // default
+		page := 1
 		if pageStr != "" {
 			if val, err := strconv.Atoi(pageStr); err == nil && val > 0 {
 				page = val
@@ -58,7 +127,7 @@ func StartServer(db *gorm.DB) {
 		}
 
 		pageSizeStr := r.URL.Query().Get("page_size")
-		pageSize := 25 // default
+		pageSize := 25
 		if pageSizeStr != "" {
 			if val, err := strconv.Atoi(pageSizeStr); err == nil && val > 0 && val <= 100 {
 				pageSize = val
@@ -67,12 +136,12 @@ func StartServer(db *gorm.DB) {
 
 		provider := r.URL.Query().Get("provider")
 		if provider == "" {
-			provider = "*" // default
+			provider = "*"
 		}
 
 		minAge := r.URL.Query().Get("min_age")
 		if minAge == "" {
-			minAge = "24h" // default
+			minAge = "24h"
 		}
 
 		paginatedFindings, err := api.GetLatestFindings(
@@ -83,35 +152,25 @@ func StartServer(db *gorm.DB) {
 			db,
 		)
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			log.Printf("GET /findings error: %v", err)
+			http.Error(w, "failed to fetch findings", http.StatusInternalServerError)
 			return
 		}
 
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		if err := json.NewEncoder(w).Encode(paginatedFindings); err != nil {
-			http.Error(w, "Failed to encode response", http.StatusInternalServerError)
-			return
-		}
+		writeJSON(w, http.StatusOK, paginatedFindings)
 	})
 
-	// GET /findings/count
 	router.Get("/findings/count", func(w http.ResponseWriter, r *http.Request) {
 		count, err := api.GetFindingsCount(db)
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			log.Printf("GET /findings/count error: %v", err)
+			http.Error(w, "failed to count findings", http.StatusInternalServerError)
 			return
 		}
 
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		if err := json.NewEncoder(w).Encode(map[string]int64{"total_count": count}); err != nil {
-			http.Error(w, "Failed to encode response", http.StatusInternalServerError)
-			return
-		}
+		writeJSON(w, http.StatusOK, map[string]int64{"total_count": count})
 	})
 
-	// GET /repository?repo_url=<url>
 	router.Get("/repository", func(w http.ResponseWriter, r *http.Request) {
 		repoUrl := r.URL.Query().Get("repo_url")
 		if repoUrl == "" {
@@ -121,7 +180,8 @@ func StartServer(db *gorm.DB) {
 
 		repositories, err := api.GetRepositoryInfo(repoUrl, db)
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			log.Printf("GET /repository error: %v", err)
+			http.Error(w, "failed to fetch repository", http.StatusInternalServerError)
 			return
 		}
 
@@ -130,15 +190,9 @@ func StartServer(db *gorm.DB) {
 			return
 		}
 
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		if err := json.NewEncoder(w).Encode(repositories[0]); err != nil {
-			http.Error(w, "Failed to encode response", http.StatusInternalServerError)
-			return
-		}
+		writeJSON(w, http.StatusOK, repositories[0])
 	})
 
-	// GET /repository/findings?repo_url=<url>&page=1&page_size=25
 	router.Get("/repository/findings", func(w http.ResponseWriter, r *http.Request) {
 		repoUrl := r.URL.Query().Get("repo_url")
 		if repoUrl == "" {
@@ -147,7 +201,7 @@ func StartServer(db *gorm.DB) {
 		}
 
 		pageStr := r.URL.Query().Get("page")
-		page := 1 // default
+		page := 1
 		if pageStr != "" {
 			if val, err := strconv.Atoi(pageStr); err == nil && val > 0 {
 				page = val
@@ -155,7 +209,7 @@ func StartServer(db *gorm.DB) {
 		}
 
 		pageSizeStr := r.URL.Query().Get("page_size")
-		pageSize := 25 // default
+		pageSize := 25
 		if pageSizeStr != "" {
 			if val, err := strconv.Atoi(pageSizeStr); err == nil && val > 0 && val <= 100 {
 				pageSize = val
@@ -164,22 +218,17 @@ func StartServer(db *gorm.DB) {
 
 		paginatedFindings, err := api.GetFindingsFromRepository(repoUrl, page, pageSize, db)
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			log.Printf("GET /repository/findings error: %v", err)
+			http.Error(w, "failed to fetch findings", http.StatusInternalServerError)
 			return
 		}
 
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		if err := json.NewEncoder(w).Encode(paginatedFindings); err != nil {
-			http.Error(w, "Failed to encode response", http.StatusInternalServerError)
-			return
-		}
+		writeJSON(w, http.StatusOK, paginatedFindings)
 	})
 
-	// GET /repositories?page=1&page_size=25
 	router.Get("/repositories", func(w http.ResponseWriter, r *http.Request) {
 		pageStr := r.URL.Query().Get("page")
-		page := 1 // default
+		page := 1
 		if pageStr != "" {
 			if val, err := strconv.Atoi(pageStr); err == nil && val > 0 {
 				page = val
@@ -187,7 +236,7 @@ func StartServer(db *gorm.DB) {
 		}
 
 		pageSizeStr := r.URL.Query().Get("page_size")
-		pageSize := 25 // default
+		pageSize := 25
 		if pageSizeStr != "" {
 			if val, err := strconv.Atoi(pageSizeStr); err == nil && val > 0 && val <= 100 {
 				pageSize = val
@@ -196,22 +245,25 @@ func StartServer(db *gorm.DB) {
 
 		paginatedRepos, err := api.GetAllRepositories(page, pageSize, db)
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			log.Printf("GET /repositories error: %v", err)
+			http.Error(w, "failed to fetch repositories", http.StatusInternalServerError)
 			return
 		}
 
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		if err := json.NewEncoder(w).Encode(paginatedRepos); err != nil {
-			http.Error(w, "Failed to encode response", http.StatusInternalServerError)
-			return
-		}
+		writeJSON(w, http.StatusOK, paginatedRepos)
 	})
 
 	fileServer := http.FileServer(http.FS(distFS))
 
-	// GET / ROOT
 	router.Handle("/*", fileServer)
 
-	http.ListenAndServe(":8080", router)
+	srv := &http.Server{
+		Addr:         ":8080",
+		Handler:      router,
+		ReadTimeout:  5 * time.Second,
+		WriteTimeout: 10 * time.Second,
+		IdleTimeout:  60 * time.Second,
+	}
+
+	srv.ListenAndServe()
 }
