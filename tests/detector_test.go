@@ -64,6 +64,13 @@ func TestAllDetectors(t *testing.T) {
 			shouldFind:       true,
 		},
 		{
+			name:             "OpenRouter",
+			input:            "AIzaSyAuYeUI9sNaoXpQCkN_XrXOF34VGWN7oTI", // copy the google ai key.
+			expectedKey:      "AIzaSyAuYeUI9sNaoXpQCkN_XrXOF34VGWN7oTI",
+			expectedProvider: "xai",
+			shouldFind:       true,
+		},
+		{
 			name:       "No key",
 			input:      "this string has no key",
 			shouldFind: false,

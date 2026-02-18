@@ -64,6 +64,7 @@ function createCardElement(leak) {
     const card = document.createElement('article');
     card.className = 'card';
     const { displayName, publicUrl } = transformGitHubUrl(leak.repo_name);
+    const fileUrl = `${publicUrl}/blob/main/${leak.file_path}`;
 
     card.innerHTML = `
         <div class="card-header">
@@ -79,7 +80,7 @@ function createCardElement(leak) {
             <div class="card-row card-filepath">
                 <img src="/file.svg" class="icon" alt="File icon" />
                 <span>Key path:</span>
-                <span class="path">${leak.file_path}</span>
+                <a href="${fileUrl}" target="_blank" rel="noopener noreferrer" class="path">${leak.file_path}</a>
             </div>
             <div class="card-row card-detected">
                 <div class="card-meta-item">
@@ -124,6 +125,22 @@ function showMessage(grid, message, className) {
     removeMessage('.end-message');
     removeMessage('.empty-message');
     grid.innerHTML = `<p class="${className} grid-message">${message}</p>`;
+}
+
+async function fetchTotalCount() {
+    try {
+        const response = await fetch('/findings/count');
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const data = await response.json();
+        const leakCountElement = document.getElementById('leak-count');
+        if (leakCountElement && data.total_count) {
+            animateCounter(leakCountElement, data.total_count, 1200);
+        }
+    } catch (error) {
+        console.error("Failed to fetch total count:", error);
+    }
 }
 
 async function fetchLeaks(page, filter) {
@@ -173,11 +190,12 @@ async function fetchLeaks(page, filter) {
         }
 
         if (page === 1) {
-            const leakCountElement = document.getElementById('leak-count');
+            const leakCountElement = document.getElementById('leak-count')
             if (leakCountElement && data.total_count) {
-                animateCounter(leakCountElement, data.total_count, 1200);
+                animateCounter(leakCountElement, data.total_count, 1200)
             }
         }
+
     } catch (error) {
         console.error("Failed to fetch findings:", error);
         showMessage(grid, 'oof cant connect to the server, is it up?', 'empty-message');

@@ -95,6 +95,22 @@ func StartServer(db *gorm.DB) {
 		}
 	})
 
+	// GET /findings/count
+	router.Get("/findings/count", func(w http.ResponseWriter, r *http.Request) {
+		count, err := api.GetFindingsCount(db)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		if err := json.NewEncoder(w).Encode(map[string]int64{"total_count": count}); err != nil {
+			http.Error(w, "Failed to encode response", http.StatusInternalServerError)
+			return
+		}
+	})
+
 	// GET /repository?repo_url=<url>
 	router.Get("/repository", func(w http.ResponseWriter, r *http.Request) {
 		repoUrl := r.URL.Query().Get("repo_url")

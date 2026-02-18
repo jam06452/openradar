@@ -96,31 +96,6 @@ body {
     text-transform: uppercase;
 }
 
-.nav-links {
-    font-size: 13px;
-    letter-spacing: 0.04em;
-    display: flex;
-    gap: 8px;
-    align-items: center;
-
-    a {
-        text-decoration: none;
-        color: var(--text-muted);
-        padding: 6px 14px;
-        border-radius: var(--radius-sm);
-        transition: color 0.2s ease, background-color 0.2s ease;
-
-        &:hover {
-            color: var(--text-primary);
-            background-color: var(--bg-surface-2);
-        }
-
-        &.active {
-            color: var(--accent);
-        }
-    }
-}
-
 .filter-bar {
     position: sticky;
     top: var(--nav-height);
@@ -292,10 +267,6 @@ body {
         }
     }
 
-    .card-meta {
-
-    }
-
     .card-meta-item strong {
         color: var(--text-primary);
     }
@@ -346,4 +317,15 @@ body {
         opacity: 1;
         transform: translateY(0);
     }
+}
+
+.github-link {
+    color: var(--text-muted);
+    text-decoration: none;
+    font-size: 12px;
+    transition: color 0.2s ease;
+}
+
+.github-link:hover {
+    color: var(--text-primary);
 }

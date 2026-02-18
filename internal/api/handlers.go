@@ -35,12 +35,14 @@ func GetLatestFindings(page int, pageSize int, provider string, minAge string, d
 
 	if provider != "*" {
 		validProviders := map[string]bool{
-			"anthropic": true,
-			"cerebras":  true,
-			"google":    true,
-			"groq":      true,
-			"mistral":   true,
-			"xai":       true,
+			"anthropic":  true,
+			"cerebras":   true,
+			"google":     true,
+			"groq":       true,
+			"mistral":    true,
+			"openai":     true,
+			"openrouter": true,
+			"xai":        true,
 		}
 		if !validProviders[provider] {
 			return nil, fmt.Errorf("invalid provider: %s", provider)
@@ -171,4 +173,12 @@ func GetAllRepositories(page int, pageSize int, dbToGrabFrom *gorm.DB) (*Paginat
 		TotalCount:   totalCount,
 		TotalPages:   totalPages,
 	}, nil
+}
+
+func GetFindingsCount(db *gorm.DB) (int64, error) {
+	var totalCount int64
+	if err := db.Model(&domain.Finding{}).Count(&totalCount).Error; err != nil {
+		return 0, fmt.Errorf("error counting findings: %w", err)
+	}
+	return totalCount, nil
 }
