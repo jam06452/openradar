@@ -1,12 +1,44 @@
 <!DOCTYPE html>
 <html lang="en">
-    <head>
-        <meta charset="UTF-8">
-        <meta content="width=device-width, initial-scale=1.0">
-        <title>OpenRadar</title>
-        <script type="module" src="js/main.js"></script>
-    </head>
-    <body>
-        <h1>Test</h1>
-    </body>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OpenRadar</title>
+    <script type="module" src="/js/main.js"></script>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+    <nav class="top-nav">
+        <div class="nav-content">
+            <span class="nav-logo">OpenRadar</span>
+            <div class="nav-links">
+                <a href="#" class="active">Home</a>
+                <a href="#">Explore</a>
+                <a href="#">Leaderboard</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="filter-bar">
+        <div class="tabs">
+            <button class="tab active">All</button>
+            <button class="tab">OpenAI</button>
+            <button class="tab">Anthropic</button>
+            <button class="tab">Google</button>
+            <button class="tab">OpenRouter</button>
+            <button class="tab">xAI</button>
+            <button class="tab">Groq</button>
+            <button class="tab">Cerebras</button>
+        </div>
+
+        <div class="info" id="leak-count">
+            2,000 leaks found
+        </div>
+    </div>
+
+    <main class="card-grid" id="card-grid">
+    </main>
+
+</body>
 </html>

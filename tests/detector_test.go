@@ -1,8 +1,8 @@
 package tests
 
 import (
-	_ "openradar/internal/scanner/detectors"
 	"openradar/internal/scanner/detectors"
+	_ "openradar/internal/scanner/detectors"
 	"testing"
 )
 
@@ -53,6 +53,13 @@ func TestAllDetectors(t *testing.T) {
 			name:             "xAI",
 			input:            "xai-SkkXm1m1s1pxUHwz4nlMVSyK8biDct5yof5ja6ms1far6lMUzIs8YRBGL1cxpji79QLEtJRGAwBirNxU",
 			expectedKey:      "xai-SkkXm1m1s1pxUHwz4nlMVSyK8biDct5yof5ja6ms1far6lMUzIs8YRBGL1cxpji7",
+			expectedProvider: "xai",
+			shouldFind:       true,
+		},
+		{
+			name:             "OpenRouter",
+			input:            "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",
+			expectedKey:      "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",
 			expectedProvider: "xai",
 			shouldFind:       true,
 		},

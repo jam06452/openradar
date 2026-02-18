@@ -22,15 +22,6 @@ func StartServer(db *gorm.DB) {
 	router := chi.NewRouter()
 
 	var limiter = rate.NewLimiter(10, 15) // 10 r/s, burst of 15
-
-	// Load frontend (app)
-	distFS, err := fs.Sub(app.Dist, "dist")
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	router.Use(middleware.Logger)
-
 	rateLimitMiddleware := func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if !limiter.Allow() {
@@ -41,7 +32,20 @@ func StartServer(db *gorm.DB) {
 		})
 	}
 
+	router.Use(middleware.Logger)
 	router.Use(rateLimitMiddleware)
+
+	// Load frontend (app)
+	publicFS, err := fs.Sub(app.Dist, "public")
+	if err != nil {
+		log.Fatal(err)
+	}
+	router.Mount("/public", http.StripPrefix("/public/", http.FileServer(http.FS(publicFS))))
+
+	distFS, err := fs.Sub(app.Dist, "dist")
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	// GET /findings?page=1&page_size=25&provider=google&min_age=24h
 	router.Get("/findings", func(w http.ResponseWriter, r *http.Request) {
