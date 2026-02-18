@@ -25,6 +25,32 @@ function timeAgo(dateString) {
     return Math.floor(seconds) + " seconds ago";
 }
 
+function getUpdateInterval(seconds) {
+    if (seconds < 60) return 1000;
+    if (seconds < 3600) return 60000;
+    if (seconds < 86400) return 3600000;
+    return 86400000;
+}
+
+function startLiveTimestamps() {
+    function tick() {
+        const timeElements = document.querySelectorAll('[data-detected-at]');
+        let nextInterval = 86400000;
+
+        timeElements.forEach(el => {
+            const dateString = el.getAttribute('data-detected-at');
+            const seconds = Math.floor((new Date() - new Date(dateString)) / 1000);
+            el.textContent = timeAgo(dateString);
+            nextInterval = Math.min(nextInterval, getUpdateInterval(seconds));
+        });
+
+        clearTimeout(startLiveTimestamps._timeout);
+        startLiveTimestamps._timeout = setTimeout(tick, nextInterval);
+    }
+
+    tick();
+}
+
 function transformGitHubUrl(apiUrl) {
     const defaultResult = { displayName: apiUrl, publicUrl: '#' };
     if (!apiUrl || typeof apiUrl !== 'string') return defaultResult;
@@ -85,7 +111,7 @@ function createCardElement(leak) {
             <div class="card-row card-detected">
                 <div class="card-meta-item">
                     <img src="/calendar.svg" class="icon" alt="Calendar icon" />
-                    <span>Detected: <strong>${timeAgo(leak.detected_at)}</strong></span>
+                    <span>Detected: <strong data-detected-at="${leak.detected_at}">${timeAgo(leak.detected_at)}</strong></span>
                 </div>
             </div>
         </div>
@@ -102,6 +128,8 @@ function prependCards(leaks) {
         cardElement.style.animationDelay = `${index * 100}ms`;
         grid.prepend(cardElement);
     });
+
+    startLiveTimestamps();
 }
 
 function appendCards(leaks) {
@@ -113,6 +141,8 @@ function appendCards(leaks) {
         cardElement.style.animationDelay = `${(existingCardCount + index) * 80}ms`;
         grid.appendChild(cardElement);
     });
+
+    startLiveTimestamps();
 }
 
 function removeMessage(selector) {
@@ -190,9 +220,9 @@ async function fetchLeaks(page, filter) {
         }
 
         if (page === 1) {
-            const leakCountElement = document.getElementById('leak-count')
+            const leakCountElement = document.getElementById('leak-count');
             if (leakCountElement && data.total_count) {
-                animateCounter(leakCountElement, data.total_count, 1200)
+                animateCounter(leakCountElement, data.total_count, 1200);
             }
         }
 
@@ -268,6 +298,7 @@ document.addEventListener('DOMContentLoaded', () => {
     fetchLeaks(currentPage, currentFilter).then(() => {
         if (pollingIntervalId) clearInterval(pollingIntervalId);
         pollingIntervalId = setInterval(pollForNewLeaks, 15000);
+        startLiveTimestamps();
     });
     setupTabFiltering();
     setupInfiniteScroll();
