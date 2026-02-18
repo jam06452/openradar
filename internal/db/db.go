@@ -55,7 +55,7 @@ func AddFinding(finding *domain.Finding, db *gorm.DB) error {
 // Get All Repositories
 func GetAllRepositories(db *gorm.DB) ([]domain.Repository, error) {
 	var repos []domain.Repository
-	result := db.Find(repos)
+	result := db.Find(&repos)
 	if result.Error != nil {
 		return nil, fmt.Errorf("failed to fetch repositories: %w", result.Error)
 	}
