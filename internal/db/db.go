@@ -47,7 +47,7 @@ func AddRepository(repo *domain.Repository, db *gorm.DB) error {
 func AddFinding(finding *domain.Finding, db *gorm.DB) error {
 	result := db.Create(finding)
 	if result.Error != nil {
-		return fmt.Errorf("failed to create repository: %w", result.Error)
+		return fmt.Errorf("failed to create finding: %w", result.Error)
 	}
 	return nil
 }

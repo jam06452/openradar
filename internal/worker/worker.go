@@ -58,7 +58,9 @@ func runAllDetectors(src string, path *object.File, scanJobID string, url string
 			_ = checkedFinding
 
 			if err != nil {
-				db.AddFinding(finding, DBtoSaveIn)
+				if err := db.AddFinding(finding, DBtoSaveIn); err != nil {
+					log.Printf("Failed to save finding for key %s: %v\n", key, err)
+				}
 			}
 		}
 	}
