@@ -26,6 +26,7 @@ You must have the following requirements:
 ```
 Golang 1.26
 NodeJs 22.20.0
+Postgres DB
 ```
 
 ### Cloning & Install prerequsites
