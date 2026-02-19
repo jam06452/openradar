@@ -228,6 +228,12 @@ func StartServer(db *gorm.DB) *Hub {
 			return
 		}
 
+		conn.SetReadDeadline(time.Now().Add(120 * time.Second))
+		conn.SetPongHandler(func(string) error {
+			conn.SetReadDeadline(time.Now().Add(120 * time.Second))
+			return nil
+		})
+
 		hub.add(conn)
 		defer hub.remove(conn)
 
