@@ -44,6 +44,7 @@ func GetLatestFindings(page int, pageSize int, provider string, minAge string, d
 			"openrouter": true,
 			"xai":        true,
 			"slack":      true,
+			"discord":    true,
 		}
 		if !validProviders[provider] {
 			return nil, fmt.Errorf("invalid provider: %s", provider)
