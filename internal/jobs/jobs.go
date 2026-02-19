@@ -1,26 +1,47 @@
 package jobs
 
 import (
+	"context"
+	"openradar/internal/config"
 	"time"
 
 	"gorm.io/gorm"
 )
 
-type JobFunc func(dbJOB *gorm.DB)
-
-var AllJobs []JobFunc
-
-func executeAllJobs(dbJOB *gorm.DB) {
-	for _, job := range AllJobs {
-		job(dbJOB)
-	}
+type JobContext struct {
+	DB  *gorm.DB
+	Cfg config.Config
+	Ctx context.Context
 }
 
-func RunAllJobsEvery30Minutes(dbJOB *gorm.DB) {
-	ticker := time.NewTicker(30 * time.Minute) // 30 minutes
-	defer ticker.Stop()
+type JobFunc func(jobContext JobContext)
 
-	for range ticker.C {
-		executeAllJobs(dbJOB)
+type Job struct {
+	Name     string
+	Func     JobFunc
+	Schedule time.Duration
+}
+
+var AllJobs []Job
+
+func RegisterJob(job Job) {
+	AllJobs = append(AllJobs, job)
+}
+
+func RunJobs(jobContext JobContext) {
+	for _, job := range AllJobs {
+		go func(j Job) {
+			ticker := time.NewTicker(j.Schedule)
+			defer ticker.Stop()
+
+			for {
+				select {
+				case <-ticker.C:
+					j.Func(jobContext)
+				case <-jobContext.Ctx.Done():
+					return
+				}
+			}
+		}(job)
 	}
 }

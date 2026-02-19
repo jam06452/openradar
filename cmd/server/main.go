@@ -6,13 +6,11 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
-	"time"
 
 	"openradar/internal/config"
 	"openradar/internal/db"
 	"openradar/internal/jobs"
 	"openradar/internal/queue"
-	"openradar/internal/scanner"
 	"openradar/internal/server"
 	"openradar/internal/worker"
 )
@@ -36,24 +34,13 @@ func main() {
 		worker.Start(ctx, cfg, database, hub)
 	}
 
-	go jobs.RunAllJobsEvery30Minutes(database)
+	jobContext := jobs.JobContext{
+		DB:  database,
+		Cfg: cfg,
+		Ctx: ctx,
+	}
 
-	go func() {
-		ticker := time.NewTicker(35 * time.Second) // Scan every 35 sec
-		defer ticker.Stop()
-
-		for {
-			select {
-			case <-ticker.C:
-				log.Println("scanning for latest repo updates")
-				if _, err := scanner.ScanJob(ctx, cfg.GitHub.Key); err != nil {
-					log.Printf("failed to scan for jobs: %v", err)
-				}
-			case <-ctx.Done():
-				return
-			}
-		}
-	}()
+	jobs.RunJobs(jobContext)
 
 	// When shutting down
 	<-ctx.Done()
