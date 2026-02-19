@@ -14,5 +14,11 @@ func EnsureKeyIsntSpam(key string) bool {
 	if strings.Contains(lower, "your_api_key") || strings.Contains(lower, "placeholder") {
 		return false // spam
 	}
+	if strings.Contains(lower, "abcdefg") {
+		return false // spam
+	}
+	if strings.Contains(lower, "12345678") {
+		return false // spam
+	}
 	return true // not spam
 }
