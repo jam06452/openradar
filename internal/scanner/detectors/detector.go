@@ -32,6 +32,9 @@ func EnsureKeyIsntSpam(key string) bool {
 	if strings.Contains(lower, "token") {
 		return false
 	}
+	if strings.Contains(lower, "000000") {
+		return false
+	}
 
 	return true // not spam
 }
