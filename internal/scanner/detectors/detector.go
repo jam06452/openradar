@@ -20,5 +20,12 @@ func EnsureKeyIsntSpam(key string) bool {
 	if strings.Contains(lower, "12345678") {
 		return false // spam
 	}
+	if strings.Contains(lower, "123") {
+		return false //spam
+	}
+	if strings.Contains(lower, "abc") {
+		return false
+	}
+
 	return true // not spam
 }
