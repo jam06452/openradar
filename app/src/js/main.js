@@ -6,26 +6,26 @@ let totalPages = 1;
 let isLoading = false;
 let currentFilter = 'all';
 let pollingIntervalId = null;
+let tickerQueue = [];
+let tickerBusy = false;
 
 function timeAgo(dateString) {
-    const date = new Date(dateString);
-    const now = new Date();
-    const seconds = Math.floor((now - date) / 1000);
-
-    let interval = seconds / 31536000;
-    if (interval > 1) return Math.floor(interval) + " years ago";
-    interval = seconds / 2592000;
-    if (interval > 1) return Math.floor(interval) + " months ago";
-    interval = seconds / 86400;
-    if (interval > 1) return Math.floor(interval) + " days ago";
-    interval = seconds / 3600;
-    if (interval > 1) return Math.floor(interval) + " hours ago";
-    interval = seconds / 60;
-    if (interval > 1) return Math.floor(interval) + " minutes ago";
-    return Math.floor(seconds) + " seconds ago";
+    const seconds = Math.floor((Date.now() - new Date(dateString)) / 1000);
+    const intervals = [
+        [31536000, 'year'],
+        [2592000, 'month'],
+        [86400, 'day'],
+        [3600, 'hour'],
+        [60, 'minute'],
+    ];
+    for (const [divisor, label] of intervals) {
+        const value = Math.floor(seconds / divisor);
+        if (value >= 1) return `${value} ${label}${value !== 1 ? 's' : ''} ago`;
+    }
+    return `${seconds} seconds ago`;
 }
 
-function getUpdateInterval(seconds) {
+function updateIntervalFor(seconds) {
     if (seconds < 60) return 1000;
     if (seconds < 3600) return 60000;
     if (seconds < 86400) return 3600000;
@@ -33,65 +33,43 @@ function getUpdateInterval(seconds) {
 }
 
 function startLiveTimestamps() {
-    function tick() {
-        const timeElements = document.querySelectorAll('[data-detected-at]');
-        let nextInterval = 86400000;
+    clearTimeout(startLiveTimestamps._t);
+    const elements = document.querySelectorAll('[data-detected-at]');
+    let next = 86400000;
+    elements.forEach(el => {
+        const seconds = Math.floor((Date.now() - new Date(el.dataset.detectedAt)) / 1000);
+        el.textContent = timeAgo(el.dataset.detectedAt);
+        next = Math.min(next, updateIntervalFor(seconds));
+    });
+    startLiveTimestamps._t = setTimeout(startLiveTimestamps, next);
+}
 
-        timeElements.forEach(el => {
-            const dateString = el.getAttribute('data-detected-at');
-            const seconds = Math.floor((new Date() - new Date(dateString)) / 1000);
-            el.textContent = timeAgo(dateString);
-            nextInterval = Math.min(nextInterval, getUpdateInterval(seconds));
-        });
-
-        clearTimeout(startLiveTimestamps._timeout);
-        startLiveTimestamps._timeout = setTimeout(tick, nextInterval);
+function repoDisplayName(apiUrl) {
+    try {
+        const path = apiUrl.replace('https://api.github.com/repos/', '');
+        const [owner, repo] = path.split('/');
+        return { displayName: `${owner}/${repo}`, publicUrl: `https://github.com/${owner}/${repo}` };
+    } catch {
+        return { displayName: apiUrl, publicUrl: '#' };
     }
+}
 
+function animateCounter(el, target, duration) {
+    const step = target / (duration / 16);
+    let current = 0;
+    const tick = () => {
+        current = Math.min(current + step, target);
+        el.textContent = Math.ceil(current).toLocaleString();
+        if (current < target) requestAnimationFrame(tick);
+    };
     tick();
 }
 
-function transformGitHubUrl(apiUrl) {
-    const defaultResult = { displayName: apiUrl, publicUrl: '#' };
-    if (!apiUrl || typeof apiUrl !== 'string') return defaultResult;
-    try {
-        if (apiUrl.startsWith('https://api.github.com/repos/')) {
-            const pathParts = apiUrl.substring('https://api.github.com/repos/'.length).split('/');
-            if (pathParts.length >= 2) {
-                const owner = pathParts[0];
-                const repo = pathParts[1];
-                const displayName = `${owner}/${repo}`;
-                const publicUrl = `https://github.com/${owner}/${repo}`;
-                return { displayName, publicUrl };
-            }
-        }
-    } catch (e) {
-        console.error("Could not parse GitHub API URL:", apiUrl, e);
-    }
-    return defaultResult;
-}
-
-function animateCounter(element, finalValue, duration) {
-    let start = 0;
-    const increment = finalValue / (duration / 16);
-    const updateCount = () => {
-        start += increment;
-        if (start < finalValue) {
-            element.innerText = Math.ceil(start).toLocaleString();
-            requestAnimationFrame(updateCount);
-        } else {
-            element.innerText = finalValue.toLocaleString();
-        }
-    };
-    updateCount();
-}
-
-function createCardElement(leak) {
+function createCard(leak) {
+    const { displayName, publicUrl } = repoDisplayName(leak.repo_name);
+    const fileUrl = `${publicUrl}/blob/main/${leak.file_path}`;
     const card = document.createElement('article');
     card.className = 'card';
-    const { displayName, publicUrl } = transformGitHubUrl(leak.repo_name);
-    const fileUrl = `${publicUrl}/blob/main/${leak.file_path}`;
-
     card.innerHTML = `
         <div class="card-header">
             <pre class="card-key"><code>${leak.key}</code></pre>
@@ -119,58 +97,45 @@ function createCardElement(leak) {
     return card;
 }
 
-function prependCards(leaks) {
+function clearMessages() {
+    document.querySelectorAll('.loading-message, .end-message, .empty-message').forEach(el => el.remove());
+}
+
+function showMessage(grid, text, className) {
+    clearMessages();
+    grid.innerHTML = `<p class="${className} grid-message">${text}</p>`;
+}
+
+function appendCards(leaks, prepend = false) {
     const grid = document.getElementById('card-grid');
     if (!grid) return;
-    
-    leaks.reverse().forEach((leak, index) => {
-        const cardElement = createCardElement(leak);
-        cardElement.style.animationDelay = `${index * 100}ms`;
-        grid.prepend(cardElement);
+    const offset = prepend ? 0 : grid.children.length;
+    const fragment = document.createDocumentFragment();
+    const ordered = prepend ? [...leaks].reverse() : leaks;
+    ordered.forEach((leak, i) => {
+        const card = createCard(leak);
+        card.style.animationDelay = `${(offset + i) * (prepend ? 100 : 80)}ms`;
+        fragment.appendChild(card);
     });
-
+    prepend ? grid.prepend(fragment) : grid.appendChild(fragment);
     startLiveTimestamps();
 }
 
-function appendCards(leaks) {
-    const grid = document.getElementById('card-grid');
-    if (!grid) return;
-    const existingCardCount = grid.children.length;
-    leaks.forEach((leak, index) => {
-        const cardElement = createCardElement(leak);
-        cardElement.style.animationDelay = `${(existingCardCount + index) * 80}ms`;
-        grid.appendChild(cardElement);
-    });
-
-    startLiveTimestamps();
-}
-
-function removeMessage(selector) {
-    const message = document.querySelector(selector);
-    if (message) message.remove();
-}
-
-function showMessage(grid, message, className) {
-    removeMessage('.loading-message');
-    removeMessage('.end-message');
-    removeMessage('.empty-message');
-    grid.innerHTML = `<p class="${className} grid-message">${message}</p>`;
+function showEndMessage(grid) {
+    const p = document.createElement('p');
+    p.className = 'end-message grid-message';
+    p.textContent = 'thats all for now (:';
+    grid.insertAdjacentElement('afterend', p);
 }
 
 async function fetchTotalCount() {
     try {
-        const response = await fetch('/findings/count');
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        const data = await response.json();
-        const leakCountElement = document.getElementById('leak-count');
-        if (leakCountElement && data.total_count) {
-            animateCounter(leakCountElement, data.total_count, 1200);
-        }
-    } catch (error) {
-        console.error("Failed to fetch total count:", error);
-    }
+        const res = await fetch('/findings/count');
+        if (!res.ok) return;
+        const { total_count } = await res.json();
+        const el = document.getElementById('leak-count');
+        if (el && total_count) animateCounter(el, total_count, 1200);
+    } catch {}
 }
 
 async function fetchLeaks(page, filter) {
@@ -178,56 +143,40 @@ async function fetchLeaks(page, filter) {
     isLoading = true;
 
     const grid = document.getElementById('card-grid');
-    if (page === 1) {
-        showMessage(grid, 'Loading findings...', 'loading-message');
-    }
+    if (page === 1) showMessage(grid, 'Loading findings...', 'loading-message');
 
     try {
         const provider = filter.toLowerCase() === 'all' ? '*' : filter.toLowerCase();
-        const response = await fetch(`/findings?page=${page}&page_size=25&provider=${provider}`);
-        
-        if (response.status === 404) {
-            if (page === 1) {
-                showMessage(grid, 'Theres nothing here (yet)! ;)', 'empty-message');
-            }
+        const res = await fetch(`/findings?page=${page}&page_size=25&provider=${provider}`);
+
+        if (res.status === 404) {
+            if (page === 1) showMessage(grid, 'Theres nothing here (yet)! ;)', 'empty-message');
             totalPages = page;
             return;
         }
 
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        
-        const data = await response.json();
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+        const data = await res.json();
         totalPages = data.total_pages || 1;
 
-        if (page === 1) {
-            grid.innerHTML = '';
-        }
-        
-        appendCards(data.findings || []);
-        allLeaks = allLeaks.concat(data.findings || []);
+        if (page === 1) grid.innerHTML = '';
 
-        if (page === 1 && (!data.findings || data.findings.length === 0)) {
+        const findings = data.findings || [];
+        appendCards(findings);
+        allLeaks = allLeaks.concat(findings);
+
+        if (page === 1 && findings.length === 0) {
             showMessage(grid, 'Theres nothing here (yet)! ;)', 'empty-message');
         }
 
-        if (currentPage >= totalPages && allLeaks.length > 0) {
-            const endMessage = document.createElement('p');
-            endMessage.className = 'end-message grid-message';
-            endMessage.textContent = 'thats all for now (:';
-            grid.insertAdjacentElement('afterend', endMessage);
-        }
+        if (currentPage >= totalPages && allLeaks.length > 0) showEndMessage(grid);
 
         if (page === 1) {
-            const leakCountElement = document.getElementById('leak-count');
-            if (leakCountElement && data.total_count) {
-                animateCounter(leakCountElement, data.total_count, 1200);
-            }
+            const el = document.getElementById('leak-count');
+            if (el && data.total_count) animateCounter(el, data.total_count, 1200);
         }
-
-    } catch (error) {
-        console.error("Failed to fetch findings:", error);
+    } catch {
         showMessage(grid, 'oof cant connect to the server, is it up?', 'empty-message');
     } finally {
         isLoading = false;
@@ -238,66 +187,90 @@ async function pollForNewLeaks() {
     if (isLoading) return;
     try {
         const provider = currentFilter.toLowerCase() === 'all' ? '*' : currentFilter.toLowerCase();
-        const response = await fetch(`/findings?page=1&page_size=25&provider=${provider}`);
-        if (!response.ok) return;
-
-        const data = await response.json();
-        const newFindings = data.findings || [];
-        
-        const existingIds = new Set(allLeaks.map(leak => leak.id));
-        const uniqueNewFindings = newFindings.filter(leak => !existingIds.has(leak.id));
-
-        if (uniqueNewFindings.length > 0) {
-            allLeaks.unshift(...uniqueNewFindings);
-            prependCards(uniqueNewFindings);
+        const res = await fetch(`/findings?page=1&page_size=25&provider=${provider}`);
+        if (!res.ok) return;
+        const data = await res.json();
+        const existingIds = new Set(allLeaks.map(l => l.id));
+        const fresh = (data.findings || []).filter(l => !existingIds.has(l.id));
+        if (fresh.length > 0) {
+            allLeaks.unshift(...fresh);
+            appendCards(fresh, true);
         }
+    } catch {}
+}
 
-    } catch (error) {
-        console.error("Polling failed:", error);
-    }
+function restartPolling() {
+    clearInterval(pollingIntervalId);
+    pollingIntervalId = setInterval(pollForNewLeaks, 15000);
 }
 
 function setupTabFiltering() {
-    const tabsContainer = document.querySelector('.tabs');
-    if (!tabsContainer) return;
-
-    tabsContainer.addEventListener('click', (event) => {
-        const clickedTab = event.target.closest('.tab');
-        if (!clickedTab || isLoading) return;
-
-        removeMessage('.end-message');
+    const tabs = document.querySelector('.tabs');
+    if (!tabs) return;
+    tabs.addEventListener('click', e => {
+        const tab = e.target.closest('.tab');
+        if (!tab || isLoading) return;
+        clearMessages();
         allLeaks = [];
         currentPage = 1;
-        
-        const currentActiveTab = tabsContainer.querySelector('.active');
-        if (currentActiveTab) currentActiveTab.classList.remove('active');
-        clickedTab.classList.add('active');
-
-        currentFilter = clickedTab.textContent;
+        tabs.querySelector('.active')?.classList.remove('active');
+        tab.classList.add('active');
+        currentFilter = tab.textContent;
         fetchLeaks(currentPage, currentFilter);
-
-        if (pollingIntervalId) clearInterval(pollingIntervalId);
-        pollingIntervalId = setInterval(pollForNewLeaks, 15000);
+        restartPolling();
     });
 }
 
 function setupInfiniteScroll() {
     window.addEventListener('scroll', () => {
-        const scrolledTo = window.innerHeight + window.scrollY;
-        const totalHeight = document.documentElement.scrollHeight;
-        const isNearBottom = scrolledTo >= totalHeight - 1200;
-        
-        if (isNearBottom && !isLoading && currentPage < totalPages) {
+        const nearBottom = window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 1200;
+        if (nearBottom && !isLoading && currentPage < totalPages) {
             currentPage++;
             fetchLeaks(currentPage, currentFilter);
         }
     });
 }
 
+function runTicker() {
+    if (tickerQueue.length === 0) {
+        tickerBusy = false;
+        const ticker = document.querySelector('.ticker');
+        if (ticker) { ticker.style.animation = 'none'; ticker.innerHTML = ''; }
+        return;
+    }
+    tickerBusy = true;
+    const ticker = document.querySelector('.ticker');
+    const name = tickerQueue.shift();
+    ticker.innerHTML = `<div class="info">Scanning ${name}</div>`;
+    ticker.style.animation = 'none';
+    ticker.offsetHeight;
+    ticker.style.animation = 'scroll-up 2.5s cubic-bezier(0.25, 0.1, 0.25, 1) forwards';
+    ticker.addEventListener('animationend', runTicker, { once: true });
+}
+
+function addTickerItem(url) {
+    try {
+        const parts = url.replace('https://api.github.com/repos/', '').split('/');
+        tickerQueue.push(`${parts[0]}/${parts[1]}`);
+    } catch {
+        tickerQueue.push(url);
+    }
+    if (!tickerBusy) runTicker();
+}
+
+function connectWebSocket() {
+    const ws = new WebSocket(`ws://${location.host}/live`);
+    ws.onmessage = e => {
+        try { addTickerItem(JSON.parse(e.data).url); } catch {}
+    };
+    ws.onclose = () => setTimeout(connectWebSocket, 3000);
+    ws.onerror = () => ws.close();
+}
+
 document.addEventListener('DOMContentLoaded', () => {
+    connectWebSocket();
     fetchLeaks(currentPage, currentFilter).then(() => {
-        if (pollingIntervalId) clearInterval(pollingIntervalId);
-        pollingIntervalId = setInterval(pollForNewLeaks, 15000);
+        restartPolling();
         startLiveTimestamps();
     });
     setupTabFiltering();

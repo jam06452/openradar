@@ -3,6 +3,7 @@ package worker
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"io"
 	"log"
 	"path/filepath"
@@ -14,6 +15,7 @@ import (
 	"openradar/internal/domain"
 	"openradar/internal/queue"
 	"openradar/internal/scanner"
+	"openradar/internal/server"
 
 	"openradar/internal/scanner/detectors"
 
@@ -113,7 +115,7 @@ func loopThroughFiles(repo *git.Repository, scanJobID string, url string, DBtoSa
 	return err
 }
 
-func Start(ctx context.Context, conf config.Config, DBtoSaveIn *gorm.DB) {
+func Start(ctx context.Context, conf config.Config, DBtoSaveIn *gorm.DB, Hub *server.Hub) {
 	go func() {
 		for {
 			select {
@@ -138,6 +140,12 @@ func Start(ctx context.Context, conf config.Config, DBtoSaveIn *gorm.DB) {
 						log.Printf("failed to create temp dir: %v", err)
 						continue
 					}
+
+					msg, err := json.Marshal(repo)
+					if err != nil {
+						log.Printf("Failed to send?")
+					}
+					Hub.Broadcast <- msg
 
 					addedRepo := domain.NewRepository(
 						job.ID,

@@ -18,6 +18,8 @@ import (
 	"gorm.io/gorm"
 
 	"openradar/app"
+
+	"github.com/gorilla/websocket"
 )
 
 type ipLimiter struct {
@@ -28,6 +30,51 @@ type ipLimiter struct {
 type visitorLimiter struct {
 	limiter  *rate.Limiter
 	lastSeen time.Time
+}
+
+type Hub struct {
+	clients   map[*websocket.Conn]bool
+	mu        sync.Mutex
+	Broadcast chan []byte
+}
+
+var upgrader = websocket.Upgrader{
+	CheckOrigin: func(r *http.Request) bool { // TODO
+		return true
+	},
+}
+
+func newHub() *Hub {
+	return &Hub{
+		clients:   make(map[*websocket.Conn]bool),
+		Broadcast: make(chan []byte, 256),
+	}
+}
+
+func (h *Hub) run() {
+	for msg := range h.Broadcast {
+		h.mu.Lock()
+		for conn := range h.clients {
+			if err := conn.WriteMessage(websocket.TextMessage, msg); err != nil {
+				conn.Close()
+				delete(h.clients, conn)
+			}
+		}
+		h.mu.Unlock()
+	}
+}
+
+func (h *Hub) add(conn *websocket.Conn) {
+	h.mu.Lock()
+	h.clients[conn] = true
+	h.mu.Unlock()
+}
+
+func (h *Hub) remove(conn *websocket.Conn) {
+	h.mu.Lock()
+	delete(h.clients, conn)
+	h.mu.Unlock()
+	conn.Close()
 }
 
 func newIPLimiter() *ipLimiter {
@@ -87,7 +134,7 @@ func writeJSON(w http.ResponseWriter, status int, v any) {
 	json.NewEncoder(w).Encode(v)
 }
 
-func StartServer(db *gorm.DB) {
+func StartServer(db *gorm.DB) *Hub {
 	router := chi.NewRouter()
 
 	ipl := newIPLimiter()
@@ -105,6 +152,9 @@ func StartServer(db *gorm.DB) {
 	router.Use(middleware.Logger)
 	router.Use(corsMiddleware)
 	router.Use(rateLimitMiddleware)
+
+	hub := newHub()
+	go hub.run()
 
 	publicFS, err := fs.Sub(app.Dist, "public")
 	if err != nil {
@@ -169,6 +219,25 @@ func StartServer(db *gorm.DB) {
 		}
 
 		writeJSON(w, http.StatusOK, map[string]int64{"total_count": count})
+	})
+
+	router.Get("/live", func(w http.ResponseWriter, r *http.Request) {
+		conn, err := upgrader.Upgrade(w, r, nil)
+		if err != nil {
+			log.Printf("couldnt upgrade websocket!")
+			return
+		}
+
+		hub.add(conn)
+		defer hub.remove(conn)
+
+		for {
+			_, _, err := conn.ReadMessage()
+			if err != nil {
+				break
+			}
+		}
+
 	})
 
 	router.Get("/repository", func(w http.ResponseWriter, r *http.Request) {
@@ -265,5 +334,6 @@ func StartServer(db *gorm.DB) {
 		IdleTimeout:  60 * time.Second,
 	}
 
-	srv.ListenAndServe()
+	go srv.ListenAndServe()
+	return hub
 }

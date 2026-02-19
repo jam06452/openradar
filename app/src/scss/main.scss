@@ -179,6 +179,50 @@ body {
     text-transform: uppercase;
 }
 
+.live-repo-container {
+    width: 100%;
+    max-width: 900px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 0 4px;
+    color: var(--text-dim);
+    font-size: 11px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    flex-direction: column;
+
+    overflow: auto;
+
+    .ticker-wrap {
+        height: 1.4em;
+        overflow: hidden;
+        width: 100%;
+        display: flex;
+        justify-content: center;
+    }
+
+    .ticker {
+        display: flex;
+        flex-direction: column;
+        animation: scroll-up 2.5s cubic-bezier(0.25, 0.1, 0.25, 1) infinite;
+    }
+
+    .info {
+        height: 1.4em;
+        line-height: 1.4em;
+        text-align: center;
+        white-space: nowrap;
+    }
+
+    @keyframes scroll-up {
+        0% {  transform: translateY(0);  }
+        100% {  transform: translateY(-100%);  }
+
+    }
+}
+
 .card-grid {
     width: 100%;
     max-width: 1200px;
