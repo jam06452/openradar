@@ -52,22 +52,22 @@ func TestAllDetectors(t *testing.T) {
 		{
 			name:             "xAI",
 			input:            "xai-SkkXm1m1s1pxUHwz4nlMVSyK8biDct5yof5ja6ms1far6lMUzIs8YRBGL1cxpji79QLEtJRGAwBirNxU",
-			expectedKey:      "xai-SkkXm1m1s1pxUHwz4nlMVSyK8biDct5yof5ja6ms1far6lMUzIs8YRBGL1cxpji7",
+			expectedKey:      "xai-SkkXm1m1s1pxUHwz4nlMVSyK8biDct5yof5ja6ms1far6lMUzIs8YRBGL1cxpji79QLEtJRGAwBirNxU",
 			expectedProvider: "xai",
 			shouldFind:       true,
 		},
 		{
 			name:             "OpenRouter",
-			input:            "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",
-			expectedKey:      "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",
-			expectedProvider: "xai",
+			input:            "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", // copy the google ai key.
+			expectedKey:      "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",
+			expectedProvider: "openrouter",
 			shouldFind:       true,
 		},
 		{
-			name:             "OpenRouter",
-			input:            "AIzaSyAuYeUI9sNaoXpQCkN_XrXOF34VGWN7oTI", // copy the google ai key.
-			expectedKey:      "AIzaSyAuYeUI9sNaoXpQCkN_XrXOF34VGWN7oTI",
-			expectedProvider: "xai",
+			name:             "Slack",
+			input:            "xoxb-123456789012-123456789012-abcdefghijklmnop",
+			expectedKey:      "xoxb-123456789012-123456789012-abcdefghijklmnop",
+			expectedProvider: "slack",
 			shouldFind:       true,
 		},
 		{
