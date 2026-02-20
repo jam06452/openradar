@@ -13,9 +13,7 @@ type Config struct {
 	Env string
 
 	HTTP struct {
-		Port         string
-		ReadTimeout  time.Duration
-		WriteTimeout time.Duration
+		Port string
 	}
 
 	Database struct {
@@ -38,13 +36,10 @@ func Load() Config {
 
 	err := godotenv.Load()
 	if err != nil {
-		log.Fatal(".env couldn't load!")
+		log.Println(".env couldn't load! using env variables.")
 	}
 
 	cfg.Env = getEnv("ENV", "development")
-
-	cfg.HTTP.ReadTimeout = mustDuration(getEnv("HTTP_READ_TIMEOUT", "10s"))
-	cfg.HTTP.WriteTimeout = mustDuration(getEnv("HTTP_READ_TIMEOUT", "15s"))
 
 	cfg.Database.URL = required("DATABASE_URL")
 
