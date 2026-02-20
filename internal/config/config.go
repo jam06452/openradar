@@ -13,7 +13,6 @@ type Config struct {
 	Env string
 
 	HTTP struct {
-		Addr         string
 		Port         string
 		ReadTimeout  time.Duration
 		WriteTimeout time.Duration
@@ -44,7 +43,6 @@ func Load() Config {
 
 	cfg.Env = getEnv("ENV", "development")
 
-	cfg.HTTP.Addr = getEnv("HTTP_ADDR", ":8080")
 	cfg.HTTP.ReadTimeout = mustDuration(getEnv("HTTP_READ_TIMEOUT", "10s"))
 	cfg.HTTP.WriteTimeout = mustDuration(getEnv("HTTP_READ_TIMEOUT", "15s"))
 
