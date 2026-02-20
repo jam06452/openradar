@@ -31,6 +31,7 @@ func RegisterJob(job Job) {
 func RunJobs(jobContext JobContext) {
 	for _, job := range AllJobs {
 		go func(j Job) {
+			j.Func(jobContext)
 			ticker := time.NewTicker(j.Schedule)
 			defer ticker.Stop()
 

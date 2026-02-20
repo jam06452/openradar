@@ -63,6 +63,16 @@ func GetAllRepositories(db *gorm.DB) ([]domain.Repository, error) {
 	return repos, nil
 }
 
+// Get All Findings
+func GetAllFindings(db *gorm.DB) ([]domain.Finding, error) {
+	var findings []domain.Finding
+	result := db.Find(&findings)
+	if result.Error != nil {
+		return nil, fmt.Errorf("failed to fetch findings: %w", result.Error)
+	}
+	return findings, nil
+}
+
 // Get Repository by Name
 func GetRepositoryByName(id string, db *gorm.DB) (*domain.Repository, error) {
 	var repo domain.Repository

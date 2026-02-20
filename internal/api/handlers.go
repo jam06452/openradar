@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"math"
 	"openradar/internal/domain"
+	"openradar/internal/jobs"
+
 	"time"
 
 	"gorm.io/gorm"
@@ -77,6 +79,10 @@ func GetLatestFindings(page int, pageSize int, provider string, minAge string, d
 		TotalCount: totalCount,
 		TotalPages: totalPages,
 	}, nil
+}
+
+func GetLeaderboardData(dbToGrabFrom *gorm.DB) []jobs.LeaderboardEntry {
+	return jobs.GetCachedLeaderboard()
 }
 
 func GetRepositoryInfo(repo_url string, dbToGrabFrom *gorm.DB) ([]domain.Repository, error) {
@@ -181,6 +187,14 @@ func GetFindingsCount(db *gorm.DB) (int64, error) {
 	var totalCount int64
 	if err := db.Model(&domain.Finding{}).Count(&totalCount).Error; err != nil {
 		return 0, fmt.Errorf("error counting findings: %w", err)
+	}
+	return totalCount, nil
+}
+
+func GetRepositoriesCount(db *gorm.DB) (int64, error) {
+	var totalCount int64
+	if err := db.Model(&domain.Repository{}).Count(&totalCount).Error; err != nil {
+		return 0, fmt.Errorf("error counting repositories: %w", err)
 	}
 	return totalCount, nil
 }

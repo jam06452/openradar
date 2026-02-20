@@ -130,12 +130,12 @@ function showEndMessage(grid) {
 
 async function fetchTotalCount() {
     try {
-        const res = await fetch('/findings/count');
+        const res = await fetch('/api/findings/count');
         if (!res.ok) return;
         const { total_count } = await res.json();
         const el = document.getElementById('leak-count');
         if (el && total_count) animateCounter(el, total_count, 1200);
-    } catch {}
+    } catch { }
 }
 
 async function fetchLeaks(page, filter) {
@@ -147,7 +147,7 @@ async function fetchLeaks(page, filter) {
 
     try {
         const provider = filter.toLowerCase() === 'all' ? '*' : filter.toLowerCase();
-        const res = await fetch(`/findings?page=${page}&page_size=25&provider=${provider}`);
+        const res = await fetch(`/api/findings?page=${page}&page_size=25&provider=${provider}`);
 
         if (res.status === 404) {
             if (page === 1) showMessage(grid, 'Theres nothing here (yet)! ;)', 'empty-message');
@@ -187,7 +187,7 @@ async function pollForNewLeaks() {
     if (isLoading) return;
     try {
         const provider = currentFilter.toLowerCase() === 'all' ? '*' : currentFilter.toLowerCase();
-        const res = await fetch(`/findings?page=1&page_size=25&provider=${provider}`);
+        const res = await fetch(`/api/findings?page=1&page_size=25&provider=${provider}`);
         if (!res.ok) return;
         const data = await res.json();
         const existingIds = new Set(allLeaks.map(l => l.id));
@@ -196,7 +196,7 @@ async function pollForNewLeaks() {
             allLeaks.unshift(...fresh);
             appendCards(fresh, true);
         }
-    } catch {}
+    } catch { }
 }
 
 function restartPolling() {
@@ -259,9 +259,9 @@ function addTickerItem(url) {
 }
 
 function connectWebSocket() {
-    const ws = new WebSocket(`wss://${location.host}/live`);
+    const ws = new WebSocket(`wss://${location.host}/ws/live`);
     ws.onmessage = e => {
-        try { addTickerItem(JSON.parse(e.data).url); } catch {}
+        try { addTickerItem(JSON.parse(e.data).url); } catch { }
     };
     ws.onclose = () => setTimeout(connectWebSocket, 3000);
     ws.onerror = () => ws.close();

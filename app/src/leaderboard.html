@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>OpenRadar - GitHub Secrets</title>
-    <script type="module" src="/js/main.js"></script>
+    <script type="module" src="/js/lb.js"></script>
     <link rel="icon" href="or_logo.png" type="image/png">
 
     <meta property="og:title" content="OpenRadar - GitHub Secrets">
@@ -24,8 +24,8 @@
         <div class="nav-content">
             <span class="nav-logo">OpenRadar</span>
             <div class="nav-links">
-                <a href="/" class="nav-link active">Explore</a>
-                <a href="/leaderboard" class="nav-link">Leaderboard</a>
+                <a href="/" class="nav-link">Explore</a>
+                <a href="/leaderboard" class="nav-link active">Leaderboard</a>
             </div>
             <a href="https://github.com/officialmelon/openradar" target="_blank" rel="noopener noreferrer"
                 class="github-link">
@@ -34,35 +34,24 @@
         </div>
     </nav>
 
-    <div class="filter-bar">
-        <div class="tabs">
-            <button class="tab active">All</button>
-            <button class="tab">OpenAI</button>
-            <button class="tab">Anthropic</button>
-            <button class="tab">Google</button>
-            <button class="tab">OpenRouter</button>
-            <button class="tab">xAI</button>
-            <button class="tab">Groq</button>
-            <button class="tab">Cerebras</button>
-            <button class="tab">Slack</button>
-            <button class="tab">Discord</button>
+    <h1 class="title-text">
+        Leaderboard of shame
+    </h1>
+
+    <main class="leaderboard" id="leaderboard">
+    </main>
+
+    <div class="stats-bar">
+        <div class="stat-item">
+            <span class="stat-value" id="stat-leaks">—</span>
+            <span class="stat-label">Total Leaks</span>
         </div>
-
-        <div class="info" id="leak-count">
-            Error Occured ):
-        </div>
-
-        <div class="live-repo-container">
-            <div class="ticker-wrap">
-                <div class="ticker">
-
-                </div>
-            </div>
+        <div class="stat-divider"></div>
+        <div class="stat-item">
+            <span class="stat-value" id="stat-repos">—</span>
+            <span class="stat-label">Repos Scanned</span>
         </div>
     </div>
-
-    <main class="card-grid" id="card-grid">
-    </main>
 
 </body>
 

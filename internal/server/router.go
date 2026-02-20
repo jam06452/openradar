@@ -167,7 +167,7 @@ func StartServer(db *gorm.DB) *Hub {
 		log.Fatal(err)
 	}
 
-	router.Get("/findings", func(w http.ResponseWriter, r *http.Request) {
+	router.Get("/api/findings", func(w http.ResponseWriter, r *http.Request) {
 		pageStr := r.URL.Query().Get("page")
 		page := 1
 		if pageStr != "" {
@@ -210,7 +210,7 @@ func StartServer(db *gorm.DB) *Hub {
 		writeJSON(w, http.StatusOK, paginatedFindings)
 	})
 
-	router.Get("/findings/count", func(w http.ResponseWriter, r *http.Request) {
+	router.Get("/api/findings/count", func(w http.ResponseWriter, r *http.Request) {
 		count, err := api.GetFindingsCount(db)
 		if err != nil {
 			log.Printf("GET /findings/count error: %v", err)
@@ -221,7 +221,7 @@ func StartServer(db *gorm.DB) *Hub {
 		writeJSON(w, http.StatusOK, map[string]int64{"total_count": count})
 	})
 
-	router.Get("/live", func(w http.ResponseWriter, r *http.Request) {
+	router.Get("/ws/live", func(w http.ResponseWriter, r *http.Request) {
 		conn, err := upgrader.Upgrade(w, r, nil)
 		if err != nil {
 			log.Printf("couldnt upgrade websocket!")
@@ -246,7 +246,7 @@ func StartServer(db *gorm.DB) *Hub {
 
 	})
 
-	router.Get("/repository", func(w http.ResponseWriter, r *http.Request) {
+	router.Get("/api/repository", func(w http.ResponseWriter, r *http.Request) {
 		repoUrl := r.URL.Query().Get("repo_url")
 		if repoUrl == "" {
 			http.Error(w, "repo_url parameter is required", http.StatusBadRequest)
@@ -268,7 +268,18 @@ func StartServer(db *gorm.DB) *Hub {
 		writeJSON(w, http.StatusOK, repositories[0])
 	})
 
-	router.Get("/repository/findings", func(w http.ResponseWriter, r *http.Request) {
+	router.Get("/api/repositories/count", func(w http.ResponseWriter, r *http.Request) {
+		count, err := api.GetRepositoriesCount(db)
+		if err != nil {
+			log.Printf("GET /repositories/count error: %v", err)
+			http.Error(w, "failed to count repositories", http.StatusInternalServerError)
+			return
+		}
+
+		writeJSON(w, http.StatusOK, map[string]int64{"total_count": count})
+	})
+
+	router.Get("/api/repository/findings", func(w http.ResponseWriter, r *http.Request) {
 		repoUrl := r.URL.Query().Get("repo_url")
 		if repoUrl == "" {
 			http.Error(w, "repo_url parameter is required", http.StatusBadRequest)
@@ -301,7 +312,7 @@ func StartServer(db *gorm.DB) *Hub {
 		writeJSON(w, http.StatusOK, paginatedFindings)
 	})
 
-	router.Get("/repositories", func(w http.ResponseWriter, r *http.Request) {
+	router.Get("/api/repositories", func(w http.ResponseWriter, r *http.Request) {
 		pageStr := r.URL.Query().Get("page")
 		page := 1
 		if pageStr != "" {
@@ -328,7 +339,25 @@ func StartServer(db *gorm.DB) *Hub {
 		writeJSON(w, http.StatusOK, paginatedRepos)
 	})
 
+	router.Get("/api/leaderboard", func(w http.ResponseWriter, r *http.Request) {
+		findings := api.GetLeaderboardData(db)
+		print(findings)
+		writeJSON(w, http.StatusOK, findings)
+	})
+
 	fileServer := http.FileServer(http.FS(distFS))
+
+	// probably not the best method to serve alternatively to /*, however it required *.html for some reason?
+	router.Get("/leaderboard", func(w http.ResponseWriter, r *http.Request) {
+		f, err := distFS.Open("leaderboard.html")
+		if err != nil {
+			http.NotFound(w, r)
+			return
+		}
+		defer f.Close()
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		http.ServeFileFS(w, r, distFS, "leaderboard.html")
+	})
 
 	router.Handle("/*", fileServer)
 
