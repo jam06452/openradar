@@ -2,7 +2,6 @@ package tests
 
 import (
 	"openradar/internal/scanner/detectors"
-	_ "openradar/internal/scanner/detectors"
 	"testing"
 )
 
