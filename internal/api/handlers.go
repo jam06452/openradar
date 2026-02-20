@@ -3,15 +3,15 @@ package api
 import (
 	"fmt"
 	"math"
+	"openradar/internal/db/cache"
 	"openradar/internal/domain"
-	"openradar/internal/jobs"
 
 	"time"
 
 	"gorm.io/gorm"
 )
 
-func GetLatestFindings(page int, pageSize int, provider string, minAge string, dbToGrabFrom *gorm.DB) (*PaginatedFindings, error) {
+func GetLatestFindings(page int, pageSize int, provider string, minAge string, dbToGrabFrom *gorm.DB) (*domain.PaginatedFindings, error) {
 	if page < 1 {
 		return nil, fmt.Errorf("page must be greater than 0")
 	}
@@ -72,17 +72,13 @@ func GetLatestFindings(page int, pageSize int, provider string, minAge string, d
 
 	totalPages := int(math.Ceil(float64(totalCount) / float64(pageSize)))
 
-	return &PaginatedFindings{
+	return &domain.PaginatedFindings{
 		Findings:   findings,
 		Page:       page,
 		PageSize:   pageSize,
 		TotalCount: totalCount,
 		TotalPages: totalPages,
 	}, nil
-}
-
-func GetLeaderboardData(dbToGrabFrom *gorm.DB) []jobs.LeaderboardEntry {
-	return jobs.GetCachedLeaderboard()
 }
 
 func GetRepositoryInfo(repo_url string, dbToGrabFrom *gorm.DB) ([]domain.Repository, error) {
@@ -102,7 +98,7 @@ func GetRepositoryInfo(repo_url string, dbToGrabFrom *gorm.DB) ([]domain.Reposit
 	return repository, nil
 }
 
-func GetFindingsFromRepository(repo_url string, page int, pageSize int, dbToGrabFrom *gorm.DB) (*PaginatedFindings, error) {
+func GetFindingsFromRepository(repo_url string, page int, pageSize int, dbToGrabFrom *gorm.DB) (*domain.PaginatedFindings, error) {
 	if page < 1 {
 		return nil, fmt.Errorf("page must be greater than 0")
 	}
@@ -136,7 +132,7 @@ func GetFindingsFromRepository(repo_url string, page int, pageSize int, dbToGrab
 
 	totalPages := int(math.Ceil(float64(totalCount) / float64(pageSize)))
 
-	return &PaginatedFindings{
+	return &domain.PaginatedFindings{
 		Findings:   findings,
 		Page:       page,
 		PageSize:   pageSize,
@@ -145,7 +141,7 @@ func GetFindingsFromRepository(repo_url string, page int, pageSize int, dbToGrab
 	}, nil
 }
 
-func GetAllRepositories(page int, pageSize int, dbToGrabFrom *gorm.DB) (*PaginatedRepositories, error) {
+func GetAllRepositories(page int, pageSize int, dbToGrabFrom *gorm.DB) (*domain.PaginatedRepositories, error) {
 	if page < 1 {
 		return nil, fmt.Errorf("page must be greater than 0")
 	}
@@ -174,7 +170,7 @@ func GetAllRepositories(page int, pageSize int, dbToGrabFrom *gorm.DB) (*Paginat
 
 	totalPages := int(math.Ceil(float64(totalCount) / float64(pageSize)))
 
-	return &PaginatedRepositories{
+	return &domain.PaginatedRepositories{
 		Repositories: repositories,
 		Page:         page,
 		PageSize:     pageSize,
@@ -183,18 +179,16 @@ func GetAllRepositories(page int, pageSize int, dbToGrabFrom *gorm.DB) (*Paginat
 	}, nil
 }
 
-func GetFindingsCount(db *gorm.DB) (int64, error) {
-	var totalCount int64
-	if err := db.Model(&domain.Finding{}).Count(&totalCount).Error; err != nil {
-		return 0, fmt.Errorf("error counting findings: %w", err)
-	}
-	return totalCount, nil
+// These are cached by jobs.
+
+func GetLeaderboardData() []domain.LeaderboardEntry {
+	return cache.GetCachedLeaderboard()
 }
 
-func GetRepositoriesCount(db *gorm.DB) (int64, error) {
-	var totalCount int64
-	if err := db.Model(&domain.Repository{}).Count(&totalCount).Error; err != nil {
-		return 0, fmt.Errorf("error counting repositories: %w", err)
-	}
-	return totalCount, nil
+func GetFindingsCount() int64 {
+	return cache.FindingsCount
+}
+
+func GetRepositoriesCount() int64 {
+	return cache.RepositoriesCount
 }

@@ -16,6 +16,14 @@ type Finding struct {
 	Provider   string    `json:"provider"`
 }
 
+type PaginatedFindings struct {
+	Findings   []Finding `json:"findings"`
+	Page       int       `json:"page"`
+	PageSize   int       `json:"page_size"`
+	TotalCount int64     `json:"total_count"`
+	TotalPages int       `json:"total_pages"`
+}
+
 func NewFinding(scanJobID, repoName, filePath string, key string, provider string) *Finding {
 	return &Finding{
 		ID:         uuid.New().String(),

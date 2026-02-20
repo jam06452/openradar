@@ -149,10 +149,12 @@ func StartServer(db *gorm.DB) *Hub {
 		})
 	}
 
+	// Setup middleware
 	router.Use(middleware.Logger)
 	router.Use(corsMiddleware)
 	router.Use(rateLimitMiddleware)
 
+	// setup fs folders & ws hub
 	hub := newHub()
 	go hub.run()
 
@@ -167,6 +169,7 @@ func StartServer(db *gorm.DB) *Hub {
 		log.Fatal(err)
 	}
 
+	// This returns the findings (scraped api keys)
 	router.Get("/api/findings", func(w http.ResponseWriter, r *http.Request) {
 		pageStr := r.URL.Query().Get("page")
 		page := 1
@@ -210,17 +213,14 @@ func StartServer(db *gorm.DB) *Hub {
 		writeJSON(w, http.StatusOK, paginatedFindings)
 	})
 
+	// This returns the count of all of the findings (scraped keys)
 	router.Get("/api/findings/count", func(w http.ResponseWriter, r *http.Request) {
-		count, err := api.GetFindingsCount(db)
-		if err != nil {
-			log.Printf("GET /findings/count error: %v", err)
-			http.Error(w, "failed to count findings", http.StatusInternalServerError)
-			return
-		}
+		count := api.GetFindingsCount()
 
 		writeJSON(w, http.StatusOK, map[string]int64{"total_count": count})
 	})
 
+	// This provides a websocket that sends each repository scanned to clients
 	router.Get("/ws/live", func(w http.ResponseWriter, r *http.Request) {
 		conn, err := upgrader.Upgrade(w, r, nil)
 		if err != nil {
@@ -246,6 +246,7 @@ func StartServer(db *gorm.DB) *Hub {
 
 	})
 
+	// This returns information on a repository
 	router.Get("/api/repository", func(w http.ResponseWriter, r *http.Request) {
 		repoUrl := r.URL.Query().Get("repo_url")
 		if repoUrl == "" {
@@ -268,17 +269,14 @@ func StartServer(db *gorm.DB) *Hub {
 		writeJSON(w, http.StatusOK, repositories[0])
 	})
 
+	// This gets the amount of repositories scanned.
 	router.Get("/api/repositories/count", func(w http.ResponseWriter, r *http.Request) {
-		count, err := api.GetRepositoriesCount(db)
-		if err != nil {
-			log.Printf("GET /repositories/count error: %v", err)
-			http.Error(w, "failed to count repositories", http.StatusInternalServerError)
-			return
-		}
+		count := api.GetRepositoriesCount()
 
 		writeJSON(w, http.StatusOK, map[string]int64{"total_count": count})
 	})
 
+	// This gets the findings for a specific repository
 	router.Get("/api/repository/findings", func(w http.ResponseWriter, r *http.Request) {
 		repoUrl := r.URL.Query().Get("repo_url")
 		if repoUrl == "" {
@@ -312,6 +310,7 @@ func StartServer(db *gorm.DB) *Hub {
 		writeJSON(w, http.StatusOK, paginatedFindings)
 	})
 
+	// This gets scanned repositories by page (pagination)
 	router.Get("/api/repositories", func(w http.ResponseWriter, r *http.Request) {
 		pageStr := r.URL.Query().Get("page")
 		page := 1
@@ -339,15 +338,16 @@ func StartServer(db *gorm.DB) *Hub {
 		writeJSON(w, http.StatusOK, paginatedRepos)
 	})
 
+	// This returns top 3 users (top 3 meaning most leaked keys from them)
 	router.Get("/api/leaderboard", func(w http.ResponseWriter, r *http.Request) {
-		findings := api.GetLeaderboardData(db)
+		findings := api.GetLeaderboardData()
 		print(findings)
 		writeJSON(w, http.StatusOK, findings)
 	})
 
 	fileServer := http.FileServer(http.FS(distFS))
 
-	// probably not the best method to serve alternatively to /*, however it required *.html for some reason?
+	// This returns the page for the leaderboard (/* requires .html in the name, hence why we do this)
 	router.Get("/leaderboard", func(w http.ResponseWriter, r *http.Request) {
 		f, err := distFS.Open("leaderboard.html")
 		if err != nil {
@@ -359,8 +359,10 @@ func StartServer(db *gorm.DB) *Hub {
 		http.ServeFileFS(w, r, distFS, "leaderboard.html")
 	})
 
+	// This handles index.html and whatnot
 	router.Handle("/*", fileServer)
 
+	// This is where we serve our api & content.
 	srv := &http.Server{
 		Addr:         ":8080",
 		Handler:      router,
@@ -369,6 +371,7 @@ func StartServer(db *gorm.DB) *Hub {
 		IdleTimeout:  60 * time.Second,
 	}
 
+	// Listens for conns & serves
 	go srv.ListenAndServe()
 	return hub
 }

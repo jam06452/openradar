@@ -2,29 +2,12 @@ package jobs
 
 import (
 	"openradar/internal/db"
+	"openradar/internal/db/cache"
+	"openradar/internal/domain"
 	"sort"
 	"strings"
-	"sync"
 	"time"
 )
-
-type LeaderboardEntry struct {
-	Username string `json:"username"`
-	RepoName string `json:"repo_name"`
-	Leaks    int    `json:"leaks"`
-	Avatar   string `json:"avatar"`
-}
-
-var (
-	cachedLeaderboard []LeaderboardEntry
-	leaderboardMu     sync.RWMutex
-)
-
-func GetCachedLeaderboard() []LeaderboardEntry {
-	leaderboardMu.RLock()
-	defer leaderboardMu.RUnlock()
-	return cachedLeaderboard
-}
 
 func extractUsername(repoName string) string {
 	repoName = strings.TrimPrefix(repoName, "https://api.github.com/repos/")
@@ -57,9 +40,9 @@ func cache_leaderboard_query(jobContext JobContext) {
 		userRepos[username] = finding.RepoName
 	}
 
-	var entries []LeaderboardEntry
+	var entries []domain.LeaderboardEntry
 	for username, count := range userCounts {
-		entries = append(entries, LeaderboardEntry{
+		entries = append(entries, domain.LeaderboardEntry{
 			Username: username,
 			RepoName: userRepos[username],
 			Leaks:    count,
@@ -75,9 +58,9 @@ func cache_leaderboard_query(jobContext JobContext) {
 		entries = entries[:3]
 	}
 
-	leaderboardMu.Lock()
-	cachedLeaderboard = entries
-	leaderboardMu.Unlock()
+	cache.LeaderboardMu.Lock()
+	cache.CachedLeaderboard = entries
+	cache.LeaderboardMu.Unlock()
 }
 
 func init() {
