@@ -2,6 +2,7 @@ package server
 
 import (
 	"encoding/json"
+	"fmt"
 	"io/fs"
 	"log"
 	"net/http"
@@ -18,6 +19,8 @@ import (
 	"gorm.io/gorm"
 
 	"openradar/app"
+
+	"openradar/internal/config"
 
 	"github.com/gorilla/websocket"
 )
@@ -134,7 +137,7 @@ func writeJSON(w http.ResponseWriter, status int, v any) {
 	json.NewEncoder(w).Encode(v)
 }
 
-func StartServer(db *gorm.DB) *Hub {
+func StartServer(db *gorm.DB, cfg config.Config) *Hub {
 	router := chi.NewRouter()
 
 	ipl := newIPLimiter()
@@ -364,7 +367,7 @@ func StartServer(db *gorm.DB) *Hub {
 
 	// This is where we serve our api & content.
 	srv := &http.Server{
-		Addr:         ":8080",
+		Addr:         fmt.Sprintf(":%s", cfg.HTTP.Port),
 		Handler:      router,
 		ReadTimeout:  5 * time.Second,
 		WriteTimeout: 10 * time.Second,

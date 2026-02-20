@@ -28,7 +28,7 @@ func main() {
 		log.Fatalf("database init failed: %v", err)
 	}
 
-	hub := server.StartServer(database) // websocket
+	hub := server.StartServer(database, cfg) // websocket
 
 	for i := 0; i < cfg.Scanner.MaxConcurrentClones; i++ {
 		worker.Start(ctx, cfg, database, hub)

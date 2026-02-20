@@ -14,6 +14,7 @@ type Config struct {
 
 	HTTP struct {
 		Addr         string
+		Port         string
 		ReadTimeout  time.Duration
 		WriteTimeout time.Duration
 	}
@@ -54,6 +55,8 @@ func Load() Config {
 	cfg.Scanner.MaxConcurrentClones = mustInt(getEnv("SCAN_MAX_CONCURRENT", "5"))
 
 	cfg.GitHub.Key = required("GITHUB_TOKEN")
+
+	cfg.HTTP.Port = required("PORT")
 
 	validate(cfg)
 	return cfg
